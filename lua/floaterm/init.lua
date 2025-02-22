@@ -233,22 +233,16 @@ local create_term_items = function()
 end
 
 function TERM.pick()
-  local has_snacks_picker, snacks_picker = pcall(require, "snacks.picker")
-  if not has_snacks_picker then
-    vim.notify("This extension works best with snacks.nvim picker enabled (https://github.com/folke/snacks.nvim), falling back to vim.ui.select()", vim.log.levels.ERROR)
-  end
-
   if not TERM._initialized then
     TERM.setup({})
     TERM._initialized = true
   end
 
-  local items = create_term_items()
-  if #items == 0 then
-    return
-  end
-
-  if not has_snacks_picker then
+  if not TERM.snacks_picker then
+    local items = create_term_items()
+    if #items == 0 then
+      return
+    end
     vim.ui.select(items,
       {
         prompt = "Select Terminal",
@@ -267,17 +261,18 @@ function TERM.pick()
     return
   end
 
-  -- If there was a terminal open, if we close the picker, we want to go back,
-  -- and snacks.picker takes us to the editor buffer
-  local term = TERM.terminals[TERM.index]
-  local term_open = false
-  if term and vim.api.nvim_win_is_valid(term.win) then
-    term_open = true
-  end
+  TERM.snacks_picker.floaterm()
+end
 
-  snacks_picker.pick({
-    title = "Select Terminal",
-    items = items,
+local function floaterm_picker(snacks_picker)
+  return {
+    win = {
+      title = "Select Terminal",
+      preview = {
+        style = "minimal",
+      }
+    },
+    finder = create_term_items,
     format = function(item)
       local ret = {}
       ret[#ret + 1] = { string.format("%-11d", item.id or 1), "FloatermNumber" }
@@ -285,28 +280,45 @@ function TERM.pick()
       ret[#ret + 1] = { item.name or "", "FloatermDirectory" }
       return ret
     end,
+    term_open = false,
+    on_show = function(picker)
+      -- If there was a terminal open, if we close the picker, we want to go back,
+      -- and snacks.picker takes us to the editor buffer
+      local term = TERM.terminals[TERM.index]
+      picker.term_open = false
+      if term and vim.api.nvim_win_is_valid(term.win) then
+        picker.term_open = true
+      end
+    end,
     confirm = function(picker, item)
       if item ~= nil then
         hide_open()
         TERM.index = item.id
         TERM.toggle()
-        term_open = false
+        picker.term_open = false
       end
       picker:close()
     end,
-    on_close = function(_)
-      if term_open then
+    on_close = function(picker)
+      if picker.term_open then
         hide_open()
         TERM.toggle()
       end
     end,
     preview = snacks_picker.preview.file,
-    win = { preview = { style = "minimal" } },
-  })
+  }
 end
 
 function TERM.setup(opts)
-  TERM.snacks = TERM.pick
+  local has_snacks_picker, snacks_picker = pcall(require, "snacks.picker")
+  TERM.snacks_picker = snacks_picker
+
+  if not has_snacks_picker then
+    vim.notify("This extension works best with snacks.nvim picker enabled (https://github.com/folke/snacks.nvim), falling back to vim.ui.select()", vim.log.levels.ERROR)
+  else
+    snacks_picker.sources.floaterm = floaterm_picker(snacks_picker)
+  end
+
   TERM.opts = vim.tbl_deep_extend("force", defaults, opts or {})
 
   vim.api.nvim_create_autocmd("TermClose", {
