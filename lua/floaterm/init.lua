@@ -233,50 +233,6 @@ local create_term_items = function()
 	return items
 end
 
-local function snack_picker(picker)
-	return {
-		win = {
-			title = "Select Terminal",
-			preview = {
-				style = "minimal",
-			},
-		},
-		finder = create_term_items,
-		format = function(item)
-			local ret = {}
-			ret[#ret + 1] = { string.format("%-11d", item.id or 1), "FloatermNumber" }
-			ret[#ret + 1] = { " " }
-			ret[#ret + 1] = { item.name or "", "FloatermDirectory" }
-			return ret
-		end,
-		term_open = false,
-		on_show = function(picker)
-			-- If there was a terminal open, if we close the picker, we want to go back,
-			-- and snacks.picker takes us to the editor buffer
-			local term = M.terminals[M.index]
-			picker.term_open = false
-			if term and vim.api.nvim_win_is_valid(term.win) then
-				picker.term_open = true
-			end
-		end,
-		confirm = function(picker, item)
-			if item ~= nil then
-				hide_open()
-				M.index = item.id
-				M.toggle()
-				picker.term_open = false
-			end
-			picker:close()
-		end,
-		on_close = function(picker)
-			if picker.term_open then
-				hide_open()
-				M.toggle()
-			end
-		end,
-		preview = picker.preview.file,
-	}
-end
 
 local function fzflua_picker()
 	local fzf_lua = require("fzf-lua")
