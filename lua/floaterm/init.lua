@@ -151,10 +151,12 @@ end
 function M.new(opts, cmd)
 	opts = vim.tbl_deep_extend("force", M.opts, opts or {})
 	local term = terminal:new(opts, cmd)
-	term.id = M.counter
-	M.counter = M.counter + 1
-	M.terminals[term.id] = term
-	M.index = term.id
+    if not opts.hide then
+        term.id = M.counter
+        M.counter = M.counter + 1
+        M.terminals[term.id] = term
+        M.index = term.id
+    end
     return term
 end
 
