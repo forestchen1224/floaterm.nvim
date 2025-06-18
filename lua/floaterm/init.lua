@@ -1,3 +1,4 @@
+local picker = require("floaterm.picker")
 local M = {
 	_initialized = false,
 	opts = {},
@@ -15,6 +16,7 @@ local defaults = {
 	border = "rounded",
 	autoclose = false,
 }
+
 
 function terminal:new()
 	return setmetatable({
@@ -127,7 +129,7 @@ local function on_buf_enter()
 	if vim.bo[buf].buftype == "terminal" then
 		local term = M.terminals[M.index]
 		if term ~= nil then
-			vim.fn.timer_start(100, function()
+			vim.fn.timer_start(50, function()
 				vim.cmd.startinsert()
 			end)
 		end
@@ -218,25 +220,9 @@ function M.resize(delta)
 	term:toggle()
 end
 
-local create_term_items = function()
-	local items = {}
-	for _, v in pairs(M.terminals) do
-		local bufnr = v.buf
-		local name = vim.fn.getbufvar(bufnr, "term_title")
-		table.insert(items, { buf = bufnr, name = name, text = string.format("%d %s", bufnr, name), id = v.id })
-	end
-
-	table.sort(items, function(a, b)
-		return vim.fn.getbufinfo(a.buf)[1].lastused > vim.fn.getbufinfo(b.buf)[1].lastused
-	end)
-
-	return items
-end
-
-
 local function fzflua_picker()
 	local fzf_lua = require("fzf-lua")
-	local items = create_term_items()
+	local items = picker.create_term_items(M.terminals)
 
 	if #items == 0 then
 		print("No terminals available")
@@ -272,8 +258,6 @@ local function fzflua_picker()
 
 	function MyPreviewer:populate_preview_buf(entry_str)
 		local buf = string.match(entry_str, ":(%d+)")
-        print(buf)
-        print(type(buf))
 
 		if buf then
 			self.listed_buffers[buf] = true
@@ -323,7 +307,7 @@ function M.pick()
 	end
 
 	if not M.snacks_picker then
-		local items = create_term_items()
+		local items = picker.create_term_items(M.terminals)
 		if #items == 0 then
 			return
 		end
@@ -345,9 +329,12 @@ function M.pick()
 		end
 		-- return
 	else
-		print(M.snacks_picker)
 		M.snacks_picker.floaterm()
 	end
+end
+
+function M.count()
+    return #M.terminals
 end
 
 function M.setup(opts)
