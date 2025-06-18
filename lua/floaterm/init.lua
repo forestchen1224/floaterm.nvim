@@ -28,8 +28,7 @@ function terminal:new(opts, cmd)
 	}, { __index = self })
 end
 
-function terminal:open(opts, cmd)
-	self.opts = opts
+function terminal:open()
 
 	local width = math.floor(vim.o.columns * self.opts.width)
 	local height = math.floor(vim.o.lines * self.opts.height)
@@ -50,8 +49,8 @@ function terminal:open(opts, cmd)
 		height = height,
 		col = col,
 		row = row,
-		style = opts.style,
-		border = opts.border,
+		style = self.opts.style,
+		border = self.opts.border,
 	}
 
 	-- Create the floating window
@@ -63,7 +62,7 @@ function terminal:open(opts, cmd)
 
 	if vim.bo[self.buf].buftype ~= "terminal" then
 		vim.api.nvim_buf_call(self.buf, function()
-			vim.fn.jobstart(cmd or vim.o.shell, {
+			vim.fn.jobstart(self.cmd or vim.o.shell, {
 				on_exit = function()
 					if self.opts.autoclose then
 						if vim.api.nvim_win_is_valid(self.win) then
@@ -81,7 +80,7 @@ end
 
 function terminal:toggle()
 	if not vim.api.nvim_win_is_valid(self.win) then
-		self:open(self.opts)
+		self:open()
 	else
 		vim.api.nvim_win_hide(self.win)
 	end
@@ -95,7 +94,7 @@ end
 
 function terminal:show()
 	if not vim.api.nvim_win_is_valid(self.win) then
-		self:open(self.opts)
+		self:open()
 	end
 end
 
@@ -139,14 +138,26 @@ end
 
 function M.open(opts, cmd)
 	hide_open()
-	local opt = vim.tbl_deep_extend("force", M.opts, opts or {})
+	-- opts = vim.tbl_deep_extend("force", M.opts, opts or {})
+	-- local term = terminal:new(opts, cmd)
+	-- term.id = M.counter
+	-- M.counter = M.counter + 1
+	-- M.terminals[term.id] = term
+	-- M.index = term.id
+    local term = M.new(opts, cmd)
+	term:open()
+end
+
+function M.new(opts, cmd)
+	opts = vim.tbl_deep_extend("force", M.opts, opts or {})
 	local term = terminal:new(opts, cmd)
 	term.id = M.counter
 	M.counter = M.counter + 1
 	M.terminals[term.id] = term
 	M.index = term.id
-	term:open(opt, cmd)
+    return term
 end
+
 
 function M.next()
 	if not M.index then
@@ -196,7 +207,7 @@ function M.toggle()
 	if term ~= nil then
 		term:toggle()
 	else
-		M.open()
+		M.open(M.opts, nil)
 	end
 end
 
