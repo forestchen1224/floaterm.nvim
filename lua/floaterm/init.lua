@@ -1,4 +1,4 @@
-local TERM = {
+local M = {
 	_initialized = false,
 	opts = {},
 	counter = 1,
@@ -98,34 +98,34 @@ end
 
 -- TERM
 local hide_open = function()
-	if not TERM.index then
+	if not M.index then
 		return
 	end
-	local term = TERM.terminals[TERM.index]
+	local term = M.terminals[M.index]
 	if term ~= nil then
 		term:hide()
 	end
 end
 
 local function on_close(ev)
-	local term = TERM.terminals[TERM.index]
+	local term = M.terminals[M.index]
 	if not term or term.buf ~= ev.buf then
 		return
 	end
-	TERM.index = nil
-	for k, _ in pairs(TERM.terminals) do
+	M.index = nil
+	for k, _ in pairs(M.terminals) do
 		if k ~= term.id then
-			TERM.index = k
+			M.index = k
 			break
 		end
 	end
-	TERM.terminals[term.id] = nil
+	M.terminals[term.id] = nil
 end
 
 local function on_buf_enter()
 	local buf = vim.api.nvim_get_current_buf()
 	if vim.bo[buf].buftype == "terminal" then
-		local term = TERM.terminals[TERM.index]
+		local term = M.terminals[M.index]
 		if term ~= nil then
 			vim.fn.timer_start(100, function()
 				vim.cmd.startinsert()
@@ -134,47 +134,47 @@ local function on_buf_enter()
 	end
 end
 
-function TERM.open(opts, cmd)
+function M.open(opts, cmd)
 	hide_open()
-	local opt = vim.tbl_deep_extend("force", TERM.opts, opts or {})
+	local opt = vim.tbl_deep_extend("force", M.opts, opts or {})
 	local term = terminal:new()
-	term.id = TERM.counter
-	TERM.counter = TERM.counter + 1
-	TERM.terminals[term.id] = term
-	TERM.index = term.id
+	term.id = M.counter
+	M.counter = M.counter + 1
+	M.terminals[term.id] = term
+	M.index = term.id
 	term:open(opt, cmd)
 end
 
-function TERM.next()
-	if not TERM.index then
+function M.next()
+	if not M.index then
 		return
 	end
 	hide_open()
 	local next = false
-	for k, v in pairs(TERM.terminals) do
+	for k, v in pairs(M.terminals) do
 		if next then
-			TERM.index = k
+			M.index = k
 			v:show()
 			return
 		end
-		if k == TERM.index then
+		if k == M.index then
 			next = true
 		end
 	end
-	TERM.terminals[TERM.index]:show()
+	M.terminals[M.index]:show()
 end
 
-function TERM.prev()
-	if not TERM.index then
+function M.prev()
+	if not M.index then
 		return
 	end
 	hide_open()
 	local index = -1
-	for k, v in pairs(TERM.terminals) do
-		if k == TERM.index then
+	for k, v in pairs(M.terminals) do
+		if k == M.index then
 			if index >= 0 then
-				TERM.index = index
-				TERM.terminals[index]:show()
+				M.index = index
+				M.terminals[index]:show()
 				return
 			else
 				v:show()
@@ -185,23 +185,23 @@ function TERM.prev()
 	end
 end
 
-function TERM.toggle()
-	if not TERM.index then
+function M.toggle()
+	if not M.index then
 		return
 	end
-	local term = TERM.terminals[TERM.index]
+	local term = M.terminals[M.index]
 	if term ~= nil then
 		term:toggle()
 	else
-		TERM.open()
+		M.open()
 	end
 end
 
-function TERM.resize(delta)
-	if not TERM.index then
+function M.resize(delta)
+	if not M.index then
 		return
 	end
-	local term = TERM.terminals[TERM.index]
+	local term = M.terminals[M.index]
 	term.opts.width = term.opts.width + delta
 	if term.opts.width > 0.99 then
 		term.opts.width = 0.99
@@ -220,7 +220,7 @@ end
 
 local create_term_items = function()
 	local items = {}
-	for _, v in pairs(TERM.terminals) do
+	for _, v in pairs(M.terminals) do
 		local bufnr = v.buf
 		local name = vim.fn.getbufvar(bufnr, "term_title")
 		table.insert(items, { buf = bufnr, name = name, text = string.format("%d %s", bufnr, name), id = v.id })
@@ -253,7 +253,7 @@ local function snack_picker(picker)
 		on_show = function(picker)
 			-- If there was a terminal open, if we close the picker, we want to go back,
 			-- and snacks.picker takes us to the editor buffer
-			local term = TERM.terminals[TERM.index]
+			local term = M.terminals[M.index]
 			picker.term_open = false
 			if term and vim.api.nvim_win_is_valid(term.win) then
 				picker.term_open = true
@@ -262,8 +262,8 @@ local function snack_picker(picker)
 		confirm = function(picker, item)
 			if item ~= nil then
 				hide_open()
-				TERM.index = item.id
-				TERM.toggle()
+				M.index = item.id
+				M.toggle()
 				picker.term_open = false
 			end
 			picker:close()
@@ -271,7 +271,7 @@ local function snack_picker(picker)
 		on_close = function(picker)
 			if picker.term_open then
 				hide_open()
-				TERM.toggle()
+				M.toggle()
 			end
 		end,
 		preview = picker.preview.file,
@@ -288,7 +288,7 @@ local function fzflua_picker()
 	end
 
 	-- Store current terminal state
-	local term = TERM.terminals[TERM.index]
+	local term = M.terminals[M.index]
 	local term_was_open = false
 	if term and vim.api.nvim_win_is_valid(term.win) then
 		term_was_open = true
@@ -296,7 +296,7 @@ local function fzflua_picker()
 
 	local display = {}
 
-	for _, v in pairs(TERM.terminals) do
+	for _, v in pairs(M.terminals) do
 		local bufnr = v.buf
 		local name = vim.fn.getbufvar(bufnr, "term_title")
 		local title = string.format("%d:%d %s", v.id, bufnr, name)
@@ -344,8 +344,8 @@ local function fzflua_picker()
 					local id = tonumber(string.match(selected[1], "(%d+):"))
 					if id then
 						hide_open()
-						TERM.index = id
-						TERM.toggle()
+						M.index = id
+						M.toggle()
 					end
 				end
 			end,
@@ -353,25 +353,25 @@ local function fzflua_picker()
 				-- On cancel, restore terminal state if it was open
 				if term_was_open then
 					hide_open()
-					TERM.toggle()
+					M.toggle()
 				end
 			end,
 		},
 	})
 end
 
-function TERM.pick()
-	if not TERM._initialized then
-		TERM.setup({})
-		TERM._initialized = true
+function M.pick()
+	if not M._initialized then
+		M.setup({})
+		M._initialized = true
 	end
 
-	if not TERM.snacks_picker then
+	if not M.snacks_picker then
 		local items = create_term_items()
 		if #items == 0 then
 			return
 		end
-		if TERM.fzf_lua_picker then
+		if M.fzf_lua_picker then
 			fzflua_picker()
 		else
 			vim.ui.select(items, {
@@ -382,30 +382,30 @@ function TERM.pick()
 			}, function(item, _)
 				if item ~= nil then
 					hide_open()
-					TERM.index = item.id
-					TERM.toggle()
+					M.index = item.id
+					M.toggle()
 				end
 			end)
 		end
 		-- return
 	else
-		print(TERM.snacks_picker)
-		TERM.snacks_picker.floaterm()
+		print(M.snacks_picker)
+		M.snacks_picker.floaterm()
 	end
 end
 
-function TERM.setup(opts)
+function M.setup(opts)
 	local has_snacks_picker, snacks_picker = pcall(require, "snacks.picker")
 	local has_fzf_lua, fzf_lua = pcall(require, "fzf-lua")
 
 	if has_snacks_picker then
-		TERM.snacks_picker = snacks_picker
+		M.snacks_picker = snacks_picker
 		snacks_picker.sources.floaterm = snack_picker(snacks_picker)
 	elseif has_fzf_lua then
-		TERM.fzf_lua_picker = fzf_lua
+		M.fzf_lua_picker = fzf_lua
 	end
 
-	TERM.opts = vim.tbl_deep_extend("force", defaults, opts or {})
+	M.opts = vim.tbl_deep_extend("force", defaults, opts or {})
 
 	vim.api.nvim_create_autocmd("TermClose", {
 		callback = on_close,
@@ -416,4 +416,4 @@ function TERM.setup(opts)
 	})
 end
 
-return TERM
+return M
