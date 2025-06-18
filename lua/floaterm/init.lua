@@ -79,10 +79,10 @@ function terminal:open()
 end
 
 function terminal:toggle()
-	if not vim.api.nvim_win_is_valid(self.win) then
-		self:open()
-	else
+	if self.win and  vim.api.nvim_win_is_valid(self.win) then
 		vim.api.nvim_win_hide(self.win)
+	else
+		self:open()
 	end
 end
 
