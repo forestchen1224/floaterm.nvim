@@ -18,12 +18,13 @@ local defaults = {
 }
 
 
-function terminal:new()
+function terminal:new(opts, cmd)
 	return setmetatable({
 		buf = nil,
 		win = nil,
 		id = nil,
-		opts = {},
+		opts = opts,
+        cmd = cmd
 	}, { __index = self })
 end
 
@@ -139,7 +140,7 @@ end
 function M.open(opts, cmd)
 	hide_open()
 	local opt = vim.tbl_deep_extend("force", M.opts, opts or {})
-	local term = terminal:new()
+	local term = terminal:new(opts, cmd)
 	term.id = M.counter
 	M.counter = M.counter + 1
 	M.terminals[term.id] = term
