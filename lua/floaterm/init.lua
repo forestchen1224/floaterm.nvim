@@ -79,6 +79,7 @@ function terminal:open()
 end
 
 function terminal:toggle()
+    print(self.win)
 	if self.win and vim.api.nvim_win_is_valid(self.win) then
 		vim.api.nvim_win_hide(self.win)
 	else
@@ -201,6 +202,7 @@ function M.prev()
 end
 
 function M.toggle()
+    -- print(vim.inspect(M.state))
 	if not M.state.index then
 		return
 	end
@@ -240,12 +242,12 @@ function M.pick()
 	end
 
 	if not M.snacks_picker then
-		local items = picker.create_term_items(M.state.terminals)
+		local items = picker.create_term_items(M.state)
 		if #items == 0 then
 			return
 		end
 		if M.fzf_lua_picker then
-			picker.fzflua_picker(M.state.terminals)
+			picker.fzflua_picker(M.state)
 		else
 			vim.ui.select(items, {
 				prompt = "Select Terminal",

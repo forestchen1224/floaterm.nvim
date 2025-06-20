@@ -1,9 +1,9 @@
 local M = {}
 
 
-M.create_term_items = function(terminals)
+M.create_term_items = function(state)
 	local items = {}
-	for _, v in pairs(terminals) do
+	for _, v in ipairs(state.terminals) do
 		local bufnr = v.buf
 		local name = vim.fn.getbufvar(bufnr, "term_title")
 		table.insert(items, { buf = bufnr, name = name, text = string.format("%d %s", bufnr, name), id = v.id })
@@ -15,12 +15,12 @@ M.create_term_items = function(terminals)
 
 	return items
 end
-M.fzflua_picker = function(terminals)
+M.fzflua_picker = function(state)
 	local fzf_lua = require("fzf-lua")
 
 	local display = {}
 
-	for _, v in ipairs(terminals) do
+	for _, v in ipairs(state.terminals) do
 		local bufnr = v.buf
 		local name = vim.fn.getbufvar(bufnr, "term_title")
 		local title = string.format("%d:%d %s", v.id, bufnr, name)
@@ -65,8 +65,11 @@ M.fzflua_picker = function(terminals)
 					-- Extract ID from the selected entry
 					local id = tonumber(string.match(selected[1], "(%d+):"))
 					if id then
-                        local terminal = terminals[id]
+                        state.index = id
+                        local terminal = state.terminals[id]
                         terminal:open()
+
+
 					end
 				end
 			end,
