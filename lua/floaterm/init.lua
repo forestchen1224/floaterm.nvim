@@ -139,12 +139,6 @@ end
 
 function M.open(opts, cmd)
 	hide_open()
-	-- opts = vim.tbl_deep_extend("force", M.opts, opts or {})
-	-- local term = terminal:new(opts, cmd)
-	-- term.id = M.counter
-	-- M.counter = M.counter + 1
-	-- M.state.terminals[term.id] = term
-	-- M.index = term.id
 	local term = M.new(opts, cmd)
 	term:open()
 end
