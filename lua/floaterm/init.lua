@@ -234,85 +234,6 @@ function M.resize(delta)
 	term:toggle()
 end
 
-local function fzflua_picker()
-	local fzf_lua = require("fzf-lua")
-	local items = picker.create_term_items(M.terminals)
-
-	if #items == 0 then
-		print("No terminals available")
-		return
-	end
-
-	-- Store current terminal state
-	local term = M.terminals[M.index]
-	local term_was_open = false
-	if term and vim.api.nvim_win_is_valid(term.win) then
-		term_was_open = true
-	end
-
-	local display = {}
-
-	for _, v in pairs(M.terminals) do
-		local bufnr = v.buf
-		local name = vim.fn.getbufvar(bufnr, "term_title")
-		local title = string.format("%d:%d %s", v.id, bufnr, name)
-		table.insert(display, title)
-	end
-
-	local builtin = require("fzf-lua.previewer.builtin")
-
-	-- Inherit from "base" instead of "buffer_or_file"
-	local MyPreviewer = builtin.base:extend()
-
-	function MyPreviewer:new(o, opts, fzf_win)
-		MyPreviewer.super.new(self, o, opts, fzf_win)
-		setmetatable(self, MyPreviewer)
-		return self
-	end
-
-	function MyPreviewer:populate_preview_buf(entry_str)
-		local buf = string.match(entry_str, ":(%d+)")
-
-		if buf then
-			self.listed_buffers[buf] = true
-			self:set_preview_buf(tonumber(buf))
-		end
-	end
-
-	-- -- Disable line numbering and word wrap
-	function MyPreviewer:gen_winopts()
-		local new_winopts = {
-			wrap = false,
-			number = false,
-		}
-		return vim.tbl_extend("force", self.winopts, new_winopts)
-	end
-
-	fzf_lua.fzf_exec(display, {
-		prompt = "Select Terminal❯ ",
-		previewer = MyPreviewer,
-		actions = {
-			["default"] = function(selected)
-				if selected and #selected > 0 then
-					-- Extract ID from the selected entry
-					local id = tonumber(string.match(selected[1], "(%d+):"))
-					if id then
-						hide_open()
-						M.index = id
-						M.toggle()
-					end
-				end
-			end,
-			["ctrl-c"] = function()
-				-- On cancel, restore terminal state if it was open
-				if term_was_open then
-					hide_open()
-					M.toggle()
-				end
-			end,
-		},
-	})
-end
 
 function M.pick()
 	if not M._initialized then
@@ -326,7 +247,7 @@ function M.pick()
 			return
 		end
 		if M.fzf_lua_picker then
-			fzflua_picker()
+			picker.fzflua_picker()
 		else
 			vim.ui.select(items, {
 				prompt = "Select Terminal",
