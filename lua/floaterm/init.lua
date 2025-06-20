@@ -2,9 +2,15 @@ local picker = require("floaterm.picker")
 local M = {
 	_initialized = false,
 	opts = {},
-	counter = 1,
+	-- counter = 1,
 	index = nil,
-	terminals = {},
+    terminals = {},
+
+	tmp = {
+		index = nil,
+		map = {},
+		counter = 1,
+	},
 }
 
 local terminal = {}
@@ -17,19 +23,17 @@ local defaults = {
 	autoclose = false,
 }
 
-
 function terminal:new(opts, cmd)
 	return setmetatable({
 		buf = nil,
 		win = nil,
 		id = nil,
 		opts = opts,
-        cmd = cmd
+		cmd = cmd,
 	}, { __index = self })
 end
 
 function terminal:open()
-
 	local width = math.floor(vim.o.columns * self.opts.width)
 	local height = math.floor(vim.o.lines * self.opts.height)
 
@@ -79,7 +83,7 @@ function terminal:open()
 end
 
 function terminal:toggle()
-	if self.win and  vim.api.nvim_win_is_valid(self.win) then
+	if self.win and vim.api.nvim_win_is_valid(self.win) then
 		vim.api.nvim_win_hide(self.win)
 	else
 		self:open()
@@ -144,22 +148,21 @@ function M.open(opts, cmd)
 	-- M.counter = M.counter + 1
 	-- M.terminals[term.id] = term
 	-- M.index = term.id
-    local term = M.new(opts, cmd)
+	local term = M.new(opts, cmd)
 	term:open()
 end
 
 function M.new(opts, cmd)
 	opts = vim.tbl_deep_extend("force", M.opts, opts or {})
 	local term = terminal:new(opts, cmd)
-    if not opts.hide then
-        term.id = M.counter
-        M.counter = M.counter + 1
-        M.terminals[term.id] = term
-        M.index = term.id
-    end
-    return term
+	if not opts.hide then
+		term.id = M.tmp.counter
+		M.tmp.counter = M.tmp.counter + 1
+		M.terminals[term.id] = term
+		M.index = term.id
+	end
+	return term
 end
-
 
 function M.next()
 	if not M.index then
@@ -234,7 +237,6 @@ function M.resize(delta)
 	term:toggle()
 end
 
-
 function M.pick()
 	if not M._initialized then
 		M.setup({})
@@ -247,7 +249,7 @@ function M.pick()
 			return
 		end
 		if M.fzf_lua_picker then
-			picker.fzflua_picker()
+			picker.fzflua_picker(M.terminals)
 		else
 			vim.ui.select(items, {
 				prompt = "Select Terminal",
@@ -269,7 +271,7 @@ function M.pick()
 end
 
 function M.count()
-    return #M.terminals
+	return #M.terminals
 end
 
 function M.setup(opts)

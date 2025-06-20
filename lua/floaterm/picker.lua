@@ -1,5 +1,6 @@
 local M = {}
 
+
 M.create_term_items = function(terminals)
 	local items = {}
 	for _, v in pairs(terminals) do
@@ -16,23 +17,10 @@ M.create_term_items = function(terminals)
 end
 M.fzflua_picker = function(terminals)
 	local fzf_lua = require("fzf-lua")
-	-- local items = picker.create_term_items(M.terminals)
-
-	-- if #items == 0 then
-	-- 	print("No terminals available")
-	-- 	return
-	-- end
-
-	-- Store current terminal state
-	-- local term = M.terminals[M.index]
-	-- local term_was_open = false
-	-- if term and vim.api.nvim_win_is_valid(term.win) then
-	-- 	term_was_open = true
-	-- end
 
 	local display = {}
 
-	for _, v in pairs(terminals) do
+	for _, v in ipairs(terminals) do
 		local bufnr = v.buf
 		local name = vim.fn.getbufvar(bufnr, "term_title")
 		local title = string.format("%d:%d %s", v.id, bufnr, name)
@@ -77,9 +65,8 @@ M.fzflua_picker = function(terminals)
 					-- Extract ID from the selected entry
 					local id = tonumber(string.match(selected[1], "(%d+):"))
 					if id then
-						hide_open()
-						M.index = id
-						M.toggle()
+                        local terminal = terminals[id]
+                        terminal:open()
 					end
 				end
 			end,
