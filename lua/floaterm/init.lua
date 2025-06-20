@@ -2,13 +2,9 @@ local picker = require("floaterm.picker")
 local M = {
 	_initialized = false,
 	opts = {},
-	-- counter = 1,
-	-- index = nil,
-    terminals = {},
-
-	tmp = {
+	state = {
 		index = nil,
-		map = {},
+		terminals = {},
 		counter = 1,
 	},
 }
@@ -104,34 +100,34 @@ end
 
 -- TERM
 local hide_open = function()
-	if not M.tmp.index then
+	if not M.state.index then
 		return
 	end
-	local term = M.terminals[M.tmp.index]
+	local term = M.state.terminals[M.state.index]
 	if term ~= nil then
 		term:hide()
 	end
 end
 
 local function on_close(ev)
-	local term = M.terminals[M.tmp.index]
+	local term = M.state.terminals[M.state.index]
 	if not term or term.buf ~= ev.buf then
 		return
 	end
-	M.tmp.index = nil
-	for k, _ in pairs(M.terminals) do
+	M.state.index = nil
+	for k, _ in pairs(M.state.terminals) do
 		if k ~= term.id then
-			M.tmp.index = k
+			M.state.index = k
 			break
 		end
 	end
-	M.terminals[term.id] = nil
+	M.state.terminals[term.id] = nil
 end
 
 local function on_buf_enter()
 	local buf = vim.api.nvim_get_current_buf()
 	if vim.bo[buf].buftype == "terminal" then
-		local term = M.terminals[M.tmp.index]
+		local term = M.state.terminals[M.state.index]
 		if term ~= nil then
 			vim.fn.timer_start(50, function()
 				vim.cmd.startinsert()
@@ -146,7 +142,7 @@ function M.open(opts, cmd)
 	-- local term = terminal:new(opts, cmd)
 	-- term.id = M.counter
 	-- M.counter = M.counter + 1
-	-- M.terminals[term.id] = term
+	-- M.state.terminals[term.id] = term
 	-- M.index = term.id
 	local term = M.new(opts, cmd)
 	term:open()
@@ -156,44 +152,44 @@ function M.new(opts, cmd)
 	opts = vim.tbl_deep_extend("force", M.opts, opts or {})
 	local term = terminal:new(opts, cmd)
 	if not opts.hide then
-		term.id = M.tmp.counter
-		M.tmp.counter = M.tmp.counter + 1
-		M.terminals[term.id] = term
-		M.tmp.index = term.id
+		term.id = M.state.counter
+		M.state.counter = M.state.counter + 1
+		M.state.terminals[term.id] = term
+		M.state.index = term.id
 	end
 	return term
 end
 
 function M.next()
-	if not M.tmp.index then
+	if not M.state.index then
 		return
 	end
 	hide_open()
 	local next = false
-	for k, v in pairs(M.terminals) do
+	for k, v in pairs(M.state.terminals) do
 		if next then
-			M.tmp.index = k
+			M.state.index = k
 			v:show()
 			return
 		end
-		if k == M.tmp.index then
+		if k == M.state.index then
 			next = true
 		end
 	end
-	M.terminals[M.tmp.index]:show()
+	M.state.terminals[M.state.index]:show()
 end
 
 function M.prev()
-	if not M.tmp.index then
+	if not M.state.index then
 		return
 	end
 	hide_open()
 	local index = -1
-	for k, v in pairs(M.terminals) do
-		if k == M.tmp.index then
+	for k, v in pairs(M.state.terminals) do
+		if k == M.state.index then
 			if index >= 0 then
-				M.tmp.index = index
-				M.terminals[index]:show()
+				M.state.index = index
+				M.state.terminals[index]:show()
 				return
 			else
 				v:show()
@@ -205,10 +201,10 @@ function M.prev()
 end
 
 function M.toggle()
-	if not M.tmp.index then
+	if not M.state.index then
 		return
 	end
-	local term = M.terminals[M.tmp.index]
+	local term = M.state.terminals[M.state.index]
 	if term ~= nil then
 		term:toggle()
 	else
@@ -217,10 +213,10 @@ function M.toggle()
 end
 
 function M.resize(delta)
-	if not M.tmp.index then
+	if not M.state.index then
 		return
 	end
-	local term = M.terminals[M.tmp.index]
+	local term = M.state.terminals[M.state.index]
 	term.opts.width = term.opts.width + delta
 	if term.opts.width > 0.99 then
 		term.opts.width = 0.99
@@ -244,12 +240,12 @@ function M.pick()
 	end
 
 	if not M.snacks_picker then
-		local items = picker.create_term_items(M.terminals)
+		local items = picker.create_term_items(M.state.terminals)
 		if #items == 0 then
 			return
 		end
 		if M.fzf_lua_picker then
-			picker.fzflua_picker(M.terminals)
+			picker.fzflua_picker(M.state.terminals)
 		else
 			vim.ui.select(items, {
 				prompt = "Select Terminal",
@@ -259,7 +255,7 @@ function M.pick()
 			}, function(item, _)
 				if item ~= nil then
 					hide_open()
-					M.tmp.index = item.id
+					M.state.index = item.id
 					M.toggle()
 				end
 			end)
@@ -271,7 +267,7 @@ function M.pick()
 end
 
 function M.count()
-	return #M.terminals
+	return #M.state.terminals
 end
 
 function M.setup(opts)
