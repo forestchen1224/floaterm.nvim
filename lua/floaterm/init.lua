@@ -3,7 +3,7 @@ local M = {
 	_initialized = false,
 	opts = {},
 	-- counter = 1,
-	index = nil,
+	-- index = nil,
     terminals = {},
 
 	tmp = {
@@ -104,24 +104,24 @@ end
 
 -- TERM
 local hide_open = function()
-	if not M.index then
+	if not M.tmp.index then
 		return
 	end
-	local term = M.terminals[M.index]
+	local term = M.terminals[M.tmp.index]
 	if term ~= nil then
 		term:hide()
 	end
 end
 
 local function on_close(ev)
-	local term = M.terminals[M.index]
+	local term = M.terminals[M.tmp.index]
 	if not term or term.buf ~= ev.buf then
 		return
 	end
-	M.index = nil
+	M.tmp.index = nil
 	for k, _ in pairs(M.terminals) do
 		if k ~= term.id then
-			M.index = k
+			M.tmp.index = k
 			break
 		end
 	end
@@ -131,7 +131,7 @@ end
 local function on_buf_enter()
 	local buf = vim.api.nvim_get_current_buf()
 	if vim.bo[buf].buftype == "terminal" then
-		local term = M.terminals[M.index]
+		local term = M.terminals[M.tmp.index]
 		if term ~= nil then
 			vim.fn.timer_start(50, function()
 				vim.cmd.startinsert()
@@ -159,40 +159,40 @@ function M.new(opts, cmd)
 		term.id = M.tmp.counter
 		M.tmp.counter = M.tmp.counter + 1
 		M.terminals[term.id] = term
-		M.index = term.id
+		M.tmp.index = term.id
 	end
 	return term
 end
 
 function M.next()
-	if not M.index then
+	if not M.tmp.index then
 		return
 	end
 	hide_open()
 	local next = false
 	for k, v in pairs(M.terminals) do
 		if next then
-			M.index = k
+			M.tmp.index = k
 			v:show()
 			return
 		end
-		if k == M.index then
+		if k == M.tmp.index then
 			next = true
 		end
 	end
-	M.terminals[M.index]:show()
+	M.terminals[M.tmp.index]:show()
 end
 
 function M.prev()
-	if not M.index then
+	if not M.tmp.index then
 		return
 	end
 	hide_open()
 	local index = -1
 	for k, v in pairs(M.terminals) do
-		if k == M.index then
+		if k == M.tmp.index then
 			if index >= 0 then
-				M.index = index
+				M.tmp.index = index
 				M.terminals[index]:show()
 				return
 			else
@@ -205,10 +205,10 @@ function M.prev()
 end
 
 function M.toggle()
-	if not M.index then
+	if not M.tmp.index then
 		return
 	end
-	local term = M.terminals[M.index]
+	local term = M.terminals[M.tmp.index]
 	if term ~= nil then
 		term:toggle()
 	else
@@ -217,10 +217,10 @@ function M.toggle()
 end
 
 function M.resize(delta)
-	if not M.index then
+	if not M.tmp.index then
 		return
 	end
-	local term = M.terminals[M.index]
+	local term = M.terminals[M.tmp.index]
 	term.opts.width = term.opts.width + delta
 	if term.opts.width > 0.99 then
 		term.opts.width = 0.99
@@ -259,7 +259,7 @@ function M.pick()
 			}, function(item, _)
 				if item ~= nil then
 					hide_open()
-					M.index = item.id
+					M.tmp.index = item.id
 					M.toggle()
 				end
 			end)
