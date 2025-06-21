@@ -19,7 +19,7 @@ M.opts = {
     border = "rounded",
     autoclose = false,
     -- picker = "fzf-lua",
-    picker = "builtin",
+    picker = "fzf-lua",
 }
 
 function terminal:new(opts, cmd)
