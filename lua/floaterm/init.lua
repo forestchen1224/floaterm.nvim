@@ -100,11 +100,11 @@ function terminal:show()
 end
 
 -- TERM
-local hide_open = function()
-	if not M.state.index then
+local hide_open = function(state)
+	if not state.index then
 		return
 	end
-	local term = M.state.terminals[M.state.index]
+	local term = state.terminals[state.index]
 	if term ~= nil then
 		term:hide()
 	end
@@ -138,7 +138,7 @@ local function on_buf_enter()
 end
 
 function M.open(opts, cmd)
-	hide_open()
+	hide_open(M.state)
 	local term = M.new(opts, cmd)
 	term:open()
 end
@@ -159,7 +159,7 @@ function M.next()
 	if not M.state.index then
 		return
 	end
-	hide_open()
+	hide_open(M.state)
 	local next = false
 	for k, v in pairs(M.state.terminals) do
 		if next then
@@ -178,7 +178,7 @@ function M.prev()
 	if not M.state.index then
 		return
 	end
-	hide_open()
+	hide_open(M.state)
 	local index = -1
 	for k, v in pairs(M.state.terminals) do
 		if k == M.state.index then
@@ -225,7 +225,7 @@ function M.resize(delta)
 	elseif term.opts.height < 0.10 then
 		term.opts.height = 0.10
 	end
-	hide_open()
+	hide_open(M.state)
 	term:toggle()
 end
 
@@ -250,7 +250,7 @@ function M.pick()
 				end,
 			}, function(item, _)
 				if item ~= nil then
-					hide_open()
+					hide_open(M.state)
 					M.state.index = item.id
 					M.toggle()
 				end
