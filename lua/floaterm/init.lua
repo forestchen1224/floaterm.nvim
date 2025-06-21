@@ -1,4 +1,5 @@
 local picker = require("floaterm.picker")
+local hide_open = require("floaterm.utils").hide_open
 local M = {
 	_initialized = false,
 	opts = {},
@@ -96,17 +97,6 @@ end
 function terminal:show()
 	if not vim.api.nvim_win_is_valid(self.win) then
 		self:open()
-	end
-end
-
--- TERM
-local hide_open = function(state)
-	if not state.index then
-		return
-	end
-	local term = state.terminals[state.index]
-	if term ~= nil then
-		term:hide()
 	end
 end
 

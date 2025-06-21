@@ -3,7 +3,7 @@ local M = {}
 
 M.create_term_items = function(state)
 	local items = {}
-	for _, v in ipairs(state.terminals) do
+	for _, v in pairs(state.terminals) do
 		local bufnr = v.buf
 		local name = vim.fn.getbufvar(bufnr, "term_title")
 		table.insert(items, { buf = bufnr, name = name, text = string.format("%d %s", bufnr, name), id = v.id })
@@ -15,12 +15,14 @@ M.create_term_items = function(state)
 
 	return items
 end
+
 M.fzflua_picker = function(state)
 	local fzf_lua = require("fzf-lua")
+    require("floaterm.utils").hide_open(state)
 
 	local display = {}
 
-	for _, v in ipairs(state.terminals) do
+	for _, v in pairs(state.terminals) do
 		local bufnr = v.buf
 		local name = vim.fn.getbufvar(bufnr, "term_title")
 		local title = string.format("%d:%d %s", v.id, bufnr, name)
@@ -73,13 +75,6 @@ M.fzflua_picker = function(state)
 					end
 				end
 			end,
-			-- ["ctrl-c"] = function()
-			-- 	-- On cancel, restore terminal state if it was open
-			-- 	if term_was_open then
-			-- 		hide_open()
-			-- 		M.toggle()
-			-- 	end
-			-- end,
 		},
 	})
 end
