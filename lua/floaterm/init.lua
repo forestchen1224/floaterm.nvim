@@ -82,7 +82,6 @@ function terminal:open()
 end
 
 function terminal:toggle()
-    print(self.win)
     if self.win and vim.api.nvim_win_is_valid(self.win) then
         vim.api.nvim_win_hide(self.win)
     else
@@ -227,29 +226,24 @@ function M.pick()
         M._initialized = true
     end
 
-    if M.opts.picker == "fzf-lua" then
-        local has_fzf_lua, _ = pcall(require, "fzf-lua")
-        if not has_fzf_lua then
-            vim.notify("fzf-lua not installed")
-        else
-            picker.fzflua_picker(M.state)
-        end
-    elseif M.opts.picker == "builtin" then
-        picker.builtin_picker(M.state)
+    local picker_options = {
+        ["fzf-lua"] = picker.fzflua_picker,
+        ["builtin"] = picker.builtin_picker,
+    }
+    M.picker = picker_options[M.opts.picker]
+    if M.picker then
+        M.picker(M.state)
     else
-        local picker_options = {
-            "fzf-lua",
-            "builtin",
-            -- ["snacker"] = true,
-        }
-        vim.notify(
-            string.format(
-                "%s is not in the [%s] options",
-                M.opts.picker,
-                table.concat(picker_options, ",")
-            ),
-            vim.log.levels.ERROR
-        )
+        vim.schedule(function()
+            vim.notify(
+                string.format(
+                    "%s is not in the [%s] options",
+                    M.opts.picker,
+                    table.concat(vim.tbl_keys(picker_options), ",")
+                ),
+                vim.log.levels.ERROR
+            )
+        end)
     end
 end
 
