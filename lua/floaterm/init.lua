@@ -1,4 +1,5 @@
 local picker = require("floaterm.picker")
+local terminal = require("floaterm.terminal")
 local hide_open = require("floaterm.utils").hide_open
 
 local M = { }
@@ -17,34 +18,6 @@ M.state = {
     terminals = {},
     counter = 1,
 }
-local terminal = require("floaterm.terminal")
-
-local function on_close(ev)
-    local term = M.state.terminals[M.state.index]
-    if not term or term.buf ~= ev.buf then
-        return
-    end
-    M.state.index = nil
-    for k, _ in pairs(M.state.terminals) do
-        if k ~= term.id then
-            M.state.index = k
-            break
-        end
-    end
-    M.state.terminals[term.id] = nil
-end
-
-local function on_buf_enter()
-    local buf = vim.api.nvim_get_current_buf()
-    if vim.bo[buf].buftype == "terminal" then
-        local term = M.state.terminals[M.state.index]
-        if term ~= nil then
-            vim.fn.timer_start(50, function()
-                vim.cmd.startinsert()
-            end)
-        end
-    end
-end
 
 function M.open(opts, cmd)
     hide_open(M.state)
@@ -162,6 +135,33 @@ end
 
 function M.count()
     return #M.state.terminals
+end
+
+local function on_close(ev)
+    local term = M.state.terminals[M.state.index]
+    if not term or term.buf ~= ev.buf then
+        return
+    end
+    M.state.index = nil
+    for k, _ in pairs(M.state.terminals) do
+        if k ~= term.id then
+            M.state.index = k
+            break
+        end
+    end
+    M.state.terminals[term.id] = nil
+end
+
+local function on_buf_enter()
+    local buf = vim.api.nvim_get_current_buf()
+    if vim.bo[buf].buftype == "terminal" then
+        local term = M.state.terminals[M.state.index]
+        if term ~= nil then
+            vim.fn.timer_start(50, function()
+                vim.cmd.startinsert()
+            end)
+        end
+    end
 end
 
 function M.setup(opts)
