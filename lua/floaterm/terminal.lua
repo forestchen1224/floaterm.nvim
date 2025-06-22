@@ -1,11 +1,9 @@
-
----@class 
-local terminal = {}
----create a new terminal object
+local M = {}
+---create a new M object
 ---@param opts table
 ---@param cmd string
 ---@return table
-function terminal:new(opts, cmd)
+function M:new(opts, cmd)
     return setmetatable({
         buf = nil,
         win = nil,
@@ -15,7 +13,7 @@ function terminal:new(opts, cmd)
     }, { __index = self })
 end
 
-function terminal:open()
+function M:open()
     local width = math.floor(vim.o.columns * self.opts.width)
     local height = math.floor(vim.o.lines * self.opts.height)
 
@@ -64,7 +62,7 @@ function terminal:open()
     end
 end
 
-function terminal:toggle()
+function M:toggle()
     if self.win and vim.api.nvim_win_is_valid(self.win) then
         vim.api.nvim_win_hide(self.win)
     else
@@ -72,15 +70,15 @@ function terminal:toggle()
     end
 end
 
-function terminal:hide()
+function M:hide()
     if vim.api.nvim_win_is_valid(self.win) then
         vim.api.nvim_win_hide(self.win)
     end
 end
 
-function terminal:show()
+function M:show()
     if not vim.api.nvim_win_is_valid(self.win) then
         self:open()
     end
 end
-return terminal
+return M
