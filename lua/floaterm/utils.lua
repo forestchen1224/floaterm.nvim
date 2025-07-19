@@ -1,5 +1,6 @@
 local M = {}
-M.hide_open = function(state)
+function M.hide_open()
+    local state = require("floaterm.state")
 	if not state.index then
 		return
 	end

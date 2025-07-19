@@ -34,15 +34,12 @@ M.create_term_items = function(state)
     for _, v in pairs(state.terminals) do
         local bufnr = v.buf
         local name = vim.fn.getbufvar(bufnr, "term_title")
-        table.insert(
-            items,
-            {
-                buf = bufnr,
-                name = name,
-                text = string.format("%d %s", bufnr, name),
-                id = v.id,
-            }
-        )
+        table.insert(items, {
+            buf = bufnr,
+            name = name,
+            text = string.format("%d %s", bufnr, name),
+            id = v.id,
+        })
     end
 
     table.sort(items, function(a, b)
@@ -55,7 +52,7 @@ end
 
 M.fzflua_picker = function(state)
     local fzf_lua = require("fzf-lua")
-    hide_open(state)
+    hide_open()
 
     local display = {}
 
@@ -81,6 +78,7 @@ M.fzflua_picker = function(state)
                     end
                 end
             end,
+            ["ctrl-n"] = function(_) end,
         },
     })
 end
@@ -93,7 +91,7 @@ M.builtin_picker = function(state)
         end,
     }, function(item, _)
         if item ~= nil then
-            hide_open(state)
+            hide_open()
             state.index = item.id
             state.terminals[item.id]:open()
         end

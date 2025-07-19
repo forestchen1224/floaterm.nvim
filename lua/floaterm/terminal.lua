@@ -43,6 +43,7 @@ function M:open()
     -- when using this after if window was created earlier?)
     vim.api.nvim_win_set_width(self.win, width)
     vim.api.nvim_win_set_height(self.win, height)
+    -- vim.api.nvim_set_option_value('colorcolumn', '', {win = self.win})
 
     if vim.bo[self.buf].buftype ~= "terminal" then
         vim.api.nvim_buf_call(self.buf, function()
@@ -58,8 +59,8 @@ function M:open()
                 term = true,
             })
         end)
-        vim.cmd.startinsert()
     end
+    vim.cmd.startinsert()
 end
 
 function M:toggle()

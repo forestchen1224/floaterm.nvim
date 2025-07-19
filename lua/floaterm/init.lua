@@ -4,23 +4,11 @@ local hide_open = require("floaterm.utils").hide_open
 
 local M = { }
 
-M.opts = {
-    width = 0.9,
-    height = 0.9,
-    style = "minimal", -- No borders or extra UI elements
-    border = "rounded",
-    autoclose = false,
-    picker = "fzf-lua",
-}
-
-M.state = {
-    index = nil,
-    terminals = {},
-    counter = 1,
-}
+M.opts = require("floaterm.config").opts
+local state = require("floaterm.state")
 
 function M.open(opts, cmd)
-    hide_open(M.state)
+    hide_open()
     local term = M.new(opts, cmd)
     term:open()
 end
@@ -29,44 +17,44 @@ function M.new(opts, cmd)
     opts = vim.tbl_deep_extend("force", M.opts, opts or {})
     local term = terminal:new(opts, cmd)
     if not opts.hide then
-        term.id = M.state.counter
-        M.state.counter = M.state.counter + 1
-        M.state.terminals[term.id] = term
-        M.state.index = term.id
+        term.id = state.counter
+        state.counter = state.counter + 1
+        state.terminals[term.id] = term
+        state.index = term.id
     end
     return term
 end
 
 function M.next()
-    if not M.state.index then
+    if not state.index then
         return
     end
-    hide_open(M.state)
+    hide_open()
     local next = false
-    for k, v in pairs(M.state.terminals) do
+    for k, v in pairs(state.terminals) do
         if next then
-            M.state.index = k
+            state.index = k
             v:show()
             return
         end
-        if k == M.state.index then
+        if k == state.index then
             next = true
         end
     end
-    M.state.terminals[M.state.index]:show()
+    state.terminals[state.index]:show()
 end
 
 function M.prev()
-    if not M.state.index then
+    if not state.index then
         return
     end
-    hide_open(M.state)
+    hide_open()
     local index = -1
-    for k, v in pairs(M.state.terminals) do
-        if k == M.state.index then
+    for k, v in pairs(state.terminals) do
+        if k == state.index then
             if index >= 0 then
-                M.state.index = index
-                M.state.terminals[index]:show()
+                state.index = index
+                state.terminals[index]:show()
                 return
             else
                 v:show()
@@ -78,11 +66,11 @@ function M.prev()
 end
 
 function M.toggle()
-    -- print(vim.inspect(M.state))
-    if not M.state.index then
+    -- print(vim.inspect(state))
+    if not state.index then
         return
     end
-    local term = M.state.terminals[M.state.index]
+    local term = state.terminals[state.index]
     if term ~= nil then
         term:toggle()
     else
@@ -91,10 +79,10 @@ function M.toggle()
 end
 
 function M.resize(delta)
-    if not M.state.index then
+    if not state.index then
         return
     end
-    local term = M.state.terminals[M.state.index]
+    local term = state.terminals[state.index]
     term.opts.width = term.opts.width + delta
     if term.opts.width > 0.99 then
         term.opts.width = 0.99
@@ -107,7 +95,7 @@ function M.resize(delta)
     elseif term.opts.height < 0.10 then
         term.opts.height = 0.10
     end
-    hide_open(M.state)
+    hide_open()
     term:toggle()
 end
 
@@ -118,7 +106,7 @@ function M.pick()
     }
     M.picker = picker_options[M.opts.picker]
     if M.picker then
-        M.picker(M.state)
+        M.picker(state)
     else
         vim.schedule(function()
             vim.notify(
@@ -134,28 +122,28 @@ function M.pick()
 end
 
 function M.count()
-    return #M.state.terminals
+    return #state.terminals
 end
 
 local function on_close(ev)
-    local term = M.state.terminals[M.state.index]
+    local term = state.terminals[state.index]
     if not term or term.buf ~= ev.buf then
         return
     end
-    M.state.index = nil
-    for k, _ in pairs(M.state.terminals) do
+    state.index = nil
+    for k, _ in pairs(state.terminals) do
         if k ~= term.id then
-            M.state.index = k
+            state.index = k
             break
         end
     end
-    M.state.terminals[term.id] = nil
+    state.terminals[term.id] = nil
 end
 
 local function on_buf_enter()
     local buf = vim.api.nvim_get_current_buf()
     if vim.bo[buf].buftype == "terminal" then
-        local term = M.state.terminals[M.state.index]
+        local term = state.terminals[state.index]
         if term ~= nil then
             vim.fn.timer_start(50, function()
                 vim.cmd.startinsert()
