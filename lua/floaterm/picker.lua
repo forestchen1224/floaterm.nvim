@@ -1,17 +1,27 @@
-local M = {}
+local Picker = {}
 local hide_open = require("floaterm.utils").hide_open
 local builtin = require("fzf-lua.previewer.builtin")
 
+--- Custom previewer class for terminal buffers in fzf-lua
+--- Extends the base previewer to handle terminal buffer previews
 -- Inherit from "base" instead of "buffer_or_file"
 local MyPreviewer = builtin.base:extend()
 
-function MyPreviewer:new(o, opts, fzf_win)
+--- Creates a new instance of the custom previewer
+--- Initializes the previewer with the provided options and fzf window
+---@param o table
+---@param opts table
+---@param fzf_win table
+---@return table
+MyPreviewer.new = function(self, o, opts, fzf_win)
     MyPreviewer.super.new(self, o, opts, fzf_win)
     setmetatable(self, MyPreviewer)
     return self
 end
 
-function MyPreviewer:populate_preview_buf(entry_str)
+--- Populates the preview buffer with the selected terminal buffer
+--- Extracts the buffer number from the entry string and sets it as preview
+ MyPreviewer.populate_preview_buf = function(self, entry_str)
     local buf = string.match(entry_str, ":(%d+)")
 
     if buf then
@@ -20,8 +30,10 @@ function MyPreviewer:populate_preview_buf(entry_str)
     end
 end
 
--- -- Disable line numbering and word wrap
-function MyPreviewer:gen_winopts()
+--- Generates window options for the preview window
+--- Disables line wrapping and line numbers for better terminal display
+ ---@return table
+MyPreviewer.gen_winopts = function(self)
     local new_winopts = {
         wrap = false,
         number = false,
@@ -29,7 +41,11 @@ function MyPreviewer:gen_winopts()
     return vim.tbl_extend("force", self.winopts, new_winopts)
 end
 
-M.create_term_items = function(state)
+--- Creates a list of terminal items from the current state
+--- Sorts terminals by last used time for better user experience
+---@param state table
+---@return table
+Picker.create_term_items = function(state)
     local items = {}
     for _, v in pairs(state.terminals) do
         local bufnr = v.buf
@@ -50,7 +66,11 @@ M.create_term_items = function(state)
     return items
 end
 
-M.fzflua_picker = function(state)
+--- Shows the fzf-lua picker for terminal selection
+--- Displays terminals with preview and allows selection with Enter
+--- Hides any open terminal before showing the picker
+---@param state table
+Picker.fzflua_picker = function(state)
     local fzf_lua = require("fzf-lua")
     hide_open()
 
@@ -82,8 +102,13 @@ M.fzflua_picker = function(state)
         },
     })
 end
-M.builtin_picker = function(state)
-    local items = M.create_term_items(state)
+
+--- Shows the builtin vim.ui.select picker for terminal selection
+--- Provides a simpler fallback when fzf-lua is not available
+--- Formats terminal items with ID and name for easy identification
+---@param state table
+Picker.builtin_picker = function(state)
+    local items = Picker.create_term_items(state)
     vim.ui.select(items, {
         prompt = "Select Terminal",
         format_item = function(item)
@@ -97,4 +122,4 @@ M.builtin_picker = function(state)
         end
     end)
 end
-return M
+return Picker

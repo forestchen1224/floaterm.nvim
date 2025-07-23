@@ -7,12 +7,21 @@ local M = { }
 M.opts = require("floaterm.config").opts
 local state = require("floaterm.state")
 
+--- Opens a new floating terminal with the specified options and command
+--- If a terminal is already open, it will be hidden before opening the new one
+---@param opts table|nil
+---@param cmd string|nil Command to run in the terminal (defaults to shell)
 function M.open(opts, cmd)
     hide_open()
     local term = M.new(opts, cmd)
     term:open()
 end
 
+--- Creates a new terminal instance with the specified options and command
+--- The terminal is registered in the state unless the 'hide' option is set
+---@param opts table|nil
+---@param cmd string|nil
+---@return table
 function M.new(opts, cmd)
     opts = vim.tbl_deep_extend("force", M.opts, opts or {})
     local term = terminal:new(opts, cmd)
@@ -25,6 +34,9 @@ function M.new(opts, cmd)
     return term
 end
 
+--- Switches to the next terminal in the list
+--- If already at the last terminal, wraps around to the current terminal
+--- Hides any currently open terminal before showing the next one
 function M.next()
     if not state.index then
         return
@@ -44,6 +56,9 @@ function M.next()
     state.terminals[state.index]:show()
 end
 
+--- Switches to the previous terminal in the list
+--- If already at the first terminal, shows the current terminal
+--- Hides any currently open terminal before showing the previous one
 function M.prev()
     if not state.index then
         return
@@ -65,6 +80,8 @@ function M.prev()
     end
 end
 
+--- Toggles the visibility of the current terminal
+--- If no terminal exists, opens a new one with default options
 function M.toggle()
     -- print(vim.inspect(state))
     if not state.index then
@@ -78,6 +95,10 @@ function M.toggle()
     end
 end
 
+--- Resizes the current terminal by the specified delta
+--- Adjusts both width and height, clamping values between 0.10 and 0.99
+--- Automatically reopens the terminal to apply the new size
+---@param delta number
 function M.resize(delta)
     if not state.index then
         return
@@ -99,6 +120,9 @@ function M.resize(delta)
     term:toggle()
 end
 
+--- Opens a picker interface to select from available terminals
+--- Uses the configured picker (fzf-lua or builtin) to display terminal list
+--- Shows an error if the configured picker is not available
 function M.pick()
     local picker_options = {
         ["fzf-lua"] = picker.fzflua_picker,
@@ -121,10 +145,15 @@ function M.pick()
     end
 end
 
+--- Returns the total number of active terminals
+---@return number
 function M.count()
     return #state.terminals
 end
 
+--- Handles terminal close events
+--- Removes the closed terminal from state and updates the current index
+---@param ev table
 local function on_close(ev)
     local term = state.terminals[state.index]
     if not term or term.buf ~= ev.buf then
@@ -140,6 +169,8 @@ local function on_close(ev)
     state.terminals[term.id] = nil
 end
 
+--- Handles buffer enter events for terminal buffers
+--- Automatically enters insert mode when entering a terminal buffer
 local function on_buf_enter()
     local buf = vim.api.nvim_get_current_buf()
     if vim.bo[buf].buftype == "terminal" then
@@ -152,6 +183,9 @@ local function on_buf_enter()
     end
 end
 
+--- Initializes the Floaterm plugin with the provided configuration
+--- Sets up autocommands for terminal management and merges user options
+---@param opts table|nil
 function M.setup(opts)
     M.opts = vim.tbl_deep_extend("force", M.opts, opts or {})
 

@@ -1,9 +1,7 @@
 local M = {}
----create a new M object
----@param opts table
----@param cmd string
----@return table
-function M:new(opts, cmd)
+--- Creates a new terminal instance with the specified options and command
+--- Returns a terminal object with methods for opening, toggling, hiding, and showing
+ function M:new(opts, cmd)
     return setmetatable({
         buf = nil,
         win = nil,
@@ -13,7 +11,10 @@ function M:new(opts, cmd)
     }, { __index = self })
 end
 
-function M:open()
+--- Opens the terminal in a floating window
+--- Creates a new buffer if needed and starts the terminal job
+--- Centers the window on screen based on configured width/height ratios
+M.open = function(self)
     local width = math.floor(vim.o.columns * self.opts.width)
     local height = math.floor(vim.o.lines * self.opts.height)
 
@@ -63,7 +64,9 @@ function M:open()
     vim.cmd.startinsert()
 end
 
-function M:toggle()
+--- Toggles the terminal window visibility
+--- If window is open, hides it; if closed, opens it
+M.toggle = function(self)
     if self.win and vim.api.nvim_win_is_valid(self.win) then
         vim.api.nvim_win_hide(self.win)
     else
@@ -71,13 +74,17 @@ function M:toggle()
     end
 end
 
-function M:hide()
+--- Hides the terminal window if it's currently visible
+--- Does not destroy the buffer, allowing the terminal to be shown again
+M.hide = function(self)
     if vim.api.nvim_win_is_valid(self.win) then
         vim.api.nvim_win_hide(self.win)
     end
 end
 
-function M:show()
+--- Shows the terminal window
+--- If the window is not valid, opens a new one
+M.show = function(self)
     if not vim.api.nvim_win_is_valid(self.win) then
         self:open()
     end
