@@ -1,114 +1,229 @@
 # floaterm.nvim
 
-## Introduction
+A lightweight Neovim plugin for managing floating terminals with ease.
 
-`floaterm.nvim` is just a simple plugin to provide floating terminals to
-*Neovim*. You can create terminals that run any command, toggle, resize,
-or select them using `next/prev` commands or a picker.
+## ✨ Features
 
-## Requirements
+- 🪟 **Floating terminals** - Beautiful floating windows for terminal sessions
+- 🔄 **Multiple terminals** - Create and manage multiple terminal instances
+- 🎯 **Terminal picker** - Quick selection with fzf-lua or builtin picker
+- 📐 **Resizable windows** - Dynamic resizing with configurable ratios
+- ⌨️ **Navigation** - Easy switching between terminals with next/prev
+- 🎨 **Customizable** - Configurable borders, dimensions, and behavior
+- 🔧 **Command execution** - Run any command in floating terminals
 
-The picker can be [snacks.nvim](https://github.com/folke/snacks.nvim) if you
-have it installed, and if not, it will use the standard `vim.ui.select`.
-`snacks.nvim` is preferred because it also provides a nice preview and
-highlighting groups.
+## 📋 Requirements
 
-## Installation and Configuration
+- Neovim 0.5+
+- Optional: [fzf-lua](https://github.com/ibhagwan/fzf-lua) for enhanced picker with preview
 
-There are no default keymaps or settings for the highlighting groups.
+## 📦 Installation
 
-If you use [lazy.nvim](https://github.com/folke/lazy.nvim), configuring the
-plugin could look like this:
+### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
 
-``` lua
+```lua
 {
-  'dawsers/floaterm.nvim',
-  -- You don't need this dependency, but the picker is nicer, with preview
+  'forestchen1224/floaterm.nvim',
   dependencies = {
-    'folke/snacks.nvim',
+    'ibhagwan/fzf-lua', -- Optional: for enhanced picker with preview
   },
   config = function()
-    local terminal = require('floaterm')
-    -- You need to call setup
-    terminal.setup()
-    vim.keymap.set({ 'n', 't' }, '<leader>tf', function() terminal.open() end, { silent = true, desc = 'New floating terminal' })
-    vim.keymap.set({ 'n', 't' }, '<leader>tn', function() terminal.next() end, { silent = true, desc = 'Next floating terminal' })
-    vim.keymap.set({ 'n', 't' }, '<leader>tp', function() terminal.prev() end, { silent = true, desc = 'Prev floating terminal' })
-    vim.keymap.set({ 'n', 't' }, '<leader>tt', function() terminal.toggle() end, { silent = true, desc = 'Toggle floating terminal' })
-    vim.keymap.set({ 'n', 't' }, "<leader>tl", function() terminal.pick() end, { silent = true, desc = 'Floaterm picker' })
-    vim.keymap.set({ 'n', 't' }, "<leader>t-", function() terminal.resize(-0.05) end, { silent = true, desc = 'Floaterm inc size' })
-    vim.keymap.set({ 'n', 't' }, "<leader>t=", function() terminal.resize(0.05) end, { silent = true, desc = 'Floaterm dec size' })
-    -- Example to run an arbitrary command
-    vim.keymap.set('n', '<leader>tv', function()
-        local cmd = "vifm"
-        local file = vim.fn.expand("%:p")
-        if file and file ~= "" then
-          cmd = cmd .. " --select " .. file
-        end
-        terminal.open({}, cmd)
-      end,
-      { silent = true, desc = "vifm at current dir" }
-    )
-    -- Set highlighting groups if your theme doesn't include them
-    vim.api.nvim_set_hl(0, 'FloatermNumber', { link = 'Number' })
-    vim.api.nvim_set_hl(0, 'FloatermDirectory', { link = 'Function' })
+    require('floaterm').setup({
+      -- Optional: override default configuration
+      width = 0.9,
+      height = 0.9,
+      border = 'rounded',
+    })
   end
 }
 ```
 
-## Available Functions and Options
+### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
 
-### open(opts, cmd)
-
-Opens a new floating terminal that runs `cmd`. If `cmd` is omitted, it will
-create a terminal running your shell (`vim.o.shell`).
-
-Every time you create a new terminal, it is added to a list, and assigned an id
-transparently managed by the plugin. You can create as many as you want.
-
-`opts` can also be omitted, or override some of the defaults, which are:
-
-``` lua
-width = 0.8 -- ratio of the total Neovim size
-height = 0.8
-autoclose = true  -- Close on exit
--- The folliwing parameters are passed to Neovim's window creation function,
--- so they can take any of the standard parameters
--- :h nvim_open_win() for help
-style = "minimal" -- No extra UI elements
--- "none", "single", "double", "rounded", "solid", "shadow" or an array
-border = "rounded"
+```lua
+use {
+  'forestchen1224/floaterm.nvim',
+  requires = { 'ibhagwan/fzf-lua' }, -- Optional
+  config = function()
+    require('floaterm').setup()
+  end
+}
 ```
 
-For example
+## ⚙️ Configuration
 
-``` lua
-require("floaterm").open({ height = 0.5 })
+### Default Options
+
+```lua
+require('floaterm').setup({
+  width = 0.9,        -- Terminal width as fraction of screen width (0.1-0.99)
+  height = 0.9,       -- Terminal height as fraction of screen height (0.1-0.99)
+  style = "minimal",  -- Window style: "minimal" for clean UI
+  border = "rounded", -- Border style: "none", "single", "double", "rounded", "solid", "shadow"
+  autoclose = false,  -- Whether to automatically close terminal when job exits
+  picker = "fzf-lua", -- Terminal picker: "fzf-lua" or "builtin"
+})
 ```
 
-would open a new terminal with height half of *Neovim*'s window.
+### Example Keymaps
 
-### toggle()
+```lua
+local floaterm = require('floaterm')
 
-Toggles the current terminal on/off.
+-- Basic terminal operations
+vim.keymap.set({ 'n', 't' }, '<leader>tf', function() floaterm.open() end, 
+  { silent = true, desc = 'Open floating terminal' })
+vim.keymap.set({ 'n', 't' }, '<leader>tt', function() floaterm.toggle() end, 
+  { silent = true, desc = 'Toggle floating terminal' })
 
-### next()
+-- Terminal navigation
+vim.keymap.set({ 'n', 't' }, '<leader>tn', function() floaterm.next() end, 
+  { silent = true, desc = 'Next terminal' })
+vim.keymap.set({ 'n', 't' }, '<leader>tp', function() floaterm.prev() end, 
+  { silent = true, desc = 'Previous terminal' })
+vim.keymap.set({ 'n', 't' }, '<leader>tl', function() floaterm.pick() end, 
+  { silent = true, desc = 'Pick terminal' })
 
-Shows the next terminal.
+-- Terminal resizing
+vim.keymap.set({ 'n', 't' }, '<leader>t=', function() floaterm.resize(0.05) end, 
+  { silent = true, desc = 'Increase terminal size' })
+vim.keymap.set({ 'n', 't' }, '<leader>t-', function() floaterm.resize(-0.05) end, 
+  { silent = true, desc = 'Decrease terminal size' })
 
-### prev()
+-- Example: Open terminal with specific command
+vim.keymap.set('n', '<leader>tg', function()
+  floaterm.open({}, 'lazygit')
+end, { silent = true, desc = 'Open lazygit' })
 
-Shows the previous terminal.
+-- Example: File manager in current directory
+vim.keymap.set('n', '<leader>tv', function()
+  local cmd = "ranger"
+  local file = vim.fn.expand("%:p")
+  if file and file ~= "" then
+    cmd = cmd .. " --selectfile=" .. vim.fn.shellescape(file)
+  end
+  floaterm.open({}, cmd)
+end, { silent = true, desc = "Open ranger at current file" })
+```
 
-### resize(delta)
+## 🚀 Usage
 
-Resizes the current terminal by delta.
+### Core Functions
 
-### pick()
+#### `open(opts, cmd)`
+Creates and opens a new floating terminal.
 
-Opens a picker to choose a terminal from the list, showing its id and name.
+- `opts` (table, optional): Configuration overrides for this terminal
+- `cmd` (string, optional): Command to run (defaults to `vim.o.shell`)
 
-If you have [snacks.nvim](https://github.com/folke/snacks.nvim) installed
-(recommended), the picker will include a preview of the terminal. If you
-don't, the plugin will use `vim.ui.select`.
+```lua
+-- Open terminal with default shell
+require('floaterm').open()
+
+-- Open terminal with custom command
+require('floaterm').open({}, 'htop')
+
+-- Open terminal with custom options
+require('floaterm').open({ width = 0.5, height = 0.5 }, 'python')
+```
+
+#### `new(opts, cmd)`
+Creates a new terminal instance without opening it.
+
+```lua
+local term = require('floaterm').new({ width = 0.8 }, 'nvim')
+term:open() -- Open when ready
+```
+
+#### `toggle()`
+Toggles the visibility of the current terminal.
+
+#### `next()` / `prev()`
+Navigate between multiple terminal instances.
+
+#### `pick()`
+Opens a picker to select from available terminals. Uses fzf-lua with preview if available, otherwise falls back to `vim.ui.select`.
+
+#### `resize(delta)`
+Resize the current terminal by the specified delta (positive or negative float).
+
+```lua
+require('floaterm').resize(0.1)  -- Increase size by 10%
+require('floaterm').resize(-0.1) -- Decrease size by 10%
+```
+
+#### `count()`
+Returns the number of active terminals.
+
+### Advanced Usage
+
+#### Creating Specialized Terminals
+
+```lua
+local floaterm = require('floaterm')
+
+-- Create a hidden terminal for background tasks
+local background_term = floaterm.new({ hide = true }, 'watch -n1 "df -h"')
+
+-- Create a compact terminal for quick commands
+local mini_term = floaterm.new({ width = 0.4, height = 0.3 })
+```
+
+#### Custom Border Styles
+
+```lua
+-- Using array for custom border characters
+floaterm.open({
+  border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" }
+})
+
+-- Using predefined styles
+floaterm.open({ border = "double" })
+floaterm.open({ border = "shadow" })
+```
+
+## 🎨 Picker Options
+
+### fzf-lua Picker (Recommended)
+When [fzf-lua](https://github.com/ibhagwan/fzf-lua) is available, the picker provides:
+- Live preview of terminal content
+- Fuzzy searching
+- Better visual presentation
+- Customizable actions
+
+### Builtin Picker
+Falls back to `vim.ui.select` when fzf-lua is not available:
+- Simple list selection
+- Works with any `vim.ui.select` implementation
+- No additional dependencies
+
+## 🔧 API Reference
+
+### Configuration Schema
+
+```lua
+{
+  width = number,     -- 0.1 to 0.99 (fraction of screen width)
+  height = number,    -- 0.1 to 0.99 (fraction of screen height)
+  style = string,     -- Window style for nvim_open_win
+  border = string|table, -- Border style or custom border array
+  autoclose = boolean,   -- Auto-close terminal on job exit
+  picker = string,       -- "fzf-lua" or "builtin"
+}
+```
+
+### Terminal Object Methods
+
+- `term:open()` - Open the terminal window
+- `term:toggle()` - Toggle terminal visibility
+- `term:hide()` - Hide the terminal window
+- `term:show()` - Show the terminal window
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
 

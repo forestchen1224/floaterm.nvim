@@ -2,7 +2,7 @@ local picker = require("floaterm.picker")
 local terminal = require("floaterm.terminal")
 local hide_open = require("floaterm.utils").hide_open
 
-local M = { }
+local M = {}
 
 M.opts = require("floaterm.config").opts
 local state = require("floaterm.state")
@@ -17,6 +17,17 @@ function M.open(opts, cmd)
     term:open()
 end
 
+function M.find(key)
+    if key then
+        local term = state.hidden_terminals[key]
+        if term then
+            return term
+        else
+            return nil
+        end
+    else
+    end
+end
 --- Creates a new terminal instance with the specified options and command
 --- The terminal is registered in the state unless the 'hide' option is set
 ---@param opts table|nil
@@ -82,7 +93,7 @@ end
 
 --- Toggles the visibility of the current terminal
 --- If no terminal exists, opens a new one with default options
-function M.toggle()
+function M.toggle(index)
     -- print(vim.inspect(state))
     if not state.index then
         return

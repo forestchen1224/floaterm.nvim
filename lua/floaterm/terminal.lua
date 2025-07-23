@@ -14,7 +14,7 @@ end
 --- Opens the terminal in a floating window
 --- Creates a new buffer if needed and starts the terminal job
 --- Centers the window on screen based on configured width/height ratios
-M.open = function(self)
+function M:open()
     local width = math.floor(vim.o.columns * self.opts.width)
     local height = math.floor(vim.o.lines * self.opts.height)
 
@@ -66,7 +66,7 @@ end
 
 --- Toggles the terminal window visibility
 --- If window is open, hides it; if closed, opens it
-M.toggle = function(self)
+function M:toggle()
     if self.win and vim.api.nvim_win_is_valid(self.win) then
         vim.api.nvim_win_hide(self.win)
     else
@@ -76,7 +76,7 @@ end
 
 --- Hides the terminal window if it's currently visible
 --- Does not destroy the buffer, allowing the terminal to be shown again
-M.hide = function(self)
+function M:hide()
     if vim.api.nvim_win_is_valid(self.win) then
         vim.api.nvim_win_hide(self.win)
     end
@@ -84,7 +84,7 @@ end
 
 --- Shows the terminal window
 --- If the window is not valid, opens a new one
-M.show = function(self)
+function M:show()
     if not vim.api.nvim_win_is_valid(self.win) then
         self:open()
     end
