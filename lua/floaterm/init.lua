@@ -4,7 +4,7 @@ local hide_open = require("floaterm.utils").hide_open
 
 local M = {}
 
-M.opts = require("floaterm.config").opts
+local config = require("floaterm.config")
 local state = require("floaterm.state")
 
 --- Opens a new floating terminal with the specified options and command
@@ -34,7 +34,7 @@ end
 ---@param cmd string|nil
 ---@return table
 function M.new(opts, cmd)
-    opts = vim.tbl_deep_extend("force", M.opts, opts or {})
+    opts = vim.tbl_deep_extend("force", config, opts or {})
     local term = terminal:new(opts, cmd)
     if not opts.hide then
         term.id = state.counter
@@ -93,16 +93,21 @@ end
 
 --- Toggles the visibility of the current terminal
 --- If no terminal exists, opens a new one with default options
-function M.toggle(index)
+function M.toggle(key)
     -- print(vim.inspect(state))
+    local term = state.hidden_terminals[key]
+    if term ~= nil then
+        term:toggle()
+        return
+    end
     if not state.index then
         return
     end
-    local term = state.terminals[state.index]
+    term = state.terminals[state.index]
     if term ~= nil then
         term:toggle()
     else
-        M.open(M.opts, nil)
+        M.open(config, nil)
     end
 end
 
@@ -115,17 +120,17 @@ function M.resize(delta)
         return
     end
     local term = state.terminals[state.index]
-    term.opts.width = term.opts.width + delta
-    if term.opts.width > 0.99 then
-        term.opts.width = 0.99
-    elseif term.opts.width < 0.10 then
-        term.opts.width = 0.10
+    term.config.width = term.config.width + delta
+    if term.config.width > 0.99 then
+        term.config.width = 0.99
+    elseif term.config.width < 0.10 then
+        term.config.width = 0.10
     end
-    term.opts.height = term.opts.height + delta
-    if term.opts.height > 0.99 then
-        term.opts.height = 0.99
-    elseif term.opts.height < 0.10 then
-        term.opts.height = 0.10
+    term.config.height = term.config.height + delta
+    if term.config.height > 0.99 then
+        term.config.height = 0.99
+    elseif term.config.height < 0.10 then
+        term.config.height = 0.10
     end
     hide_open()
     term:toggle()
@@ -139,7 +144,7 @@ function M.pick()
         ["fzf-lua"] = picker.fzflua_picker,
         ["builtin"] = picker.builtin_picker,
     }
-    M.picker = picker_options[M.opts.picker]
+    M.picker = picker_options[config.picker]
     if M.picker then
         M.picker(state)
     else
@@ -147,7 +152,7 @@ function M.pick()
             vim.notify(
                 string.format(
                     "%s is not in the [%s] options",
-                    M.opts.picker,
+                    config.picker,
                     table.concat(vim.tbl_keys(picker_options), ",")
                 ),
                 vim.log.levels.ERROR
@@ -198,7 +203,7 @@ end
 --- Sets up autocommands for terminal management and merges user options
 ---@param opts table|nil
 function M.setup(opts)
-    M.opts = vim.tbl_deep_extend("force", M.opts, opts or {})
+    config:setup(opts)
 
     vim.api.nvim_create_autocmd("TermClose", {
         callback = on_close,

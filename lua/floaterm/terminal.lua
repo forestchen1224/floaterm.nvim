@@ -1,7 +1,7 @@
 local M = {}
 --- Creates a new terminal instance with the specified options and command
 --- Returns a terminal object with methods for opening, toggling, hiding, and showing
- function M:new(opts, cmd)
+function M:new(opts, cmd)
     return setmetatable({
         buf = nil,
         win = nil,
@@ -44,7 +44,6 @@ function M:open()
     -- when using this after if window was created earlier?)
     vim.api.nvim_win_set_width(self.win, width)
     vim.api.nvim_win_set_height(self.win, height)
-    -- vim.api.nvim_set_option_value('colorcolumn', '', {win = self.win})
 
     if vim.bo[self.buf].buftype ~= "terminal" then
         vim.api.nvim_buf_call(self.buf, function()
