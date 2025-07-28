@@ -18,7 +18,7 @@ function M.open(opts, cmd)
 end
 
 function M.find(key)
-    if key then
+    if key and type(key) == "string" then
         local term = state.hidden_terminals[key]
         if term then
             return term
@@ -26,6 +26,11 @@ function M.find(key)
             return nil
         end
     else
+        if state.index and state.terminals[state.index] then
+            return state.terminals[state.index]
+        else
+            return nil
+        end
     end
 end
 --- Creates a new terminal instance with the specified options and command
@@ -36,7 +41,11 @@ end
 function M.new(opts, cmd)
     opts = vim.tbl_deep_extend("force", config, opts or {})
     local term = terminal:new(opts, cmd)
-    if not opts.hide then
+    -- if the terminal is hidden, the cmd should be the key to find it
+    if  opts.hide and cmd then
+        term.id = cmd
+        state.hidden_terminals[cmd] = term
+    else
         term.id = state.counter
         state.counter = state.counter + 1
         state.terminals[term.id] = term
@@ -95,17 +104,17 @@ end
 --- If no terminal exists, opens a new one with default options
 function M.toggle(key)
     -- print(vim.inspect(state))
-    local term = state.hidden_terminals[key]
+    local term = M.find(key)
     if term ~= nil then
         term:toggle()
         return
-    end
-    if not state.index then
-        return
-    end
-    term = state.terminals[state.index]
-    if term ~= nil then
-        term:toggle()
+    -- end
+    -- if not state.index then
+    --     return
+    -- end
+    -- term = state.terminals[state.index]
+    -- if term ~= nil then
+    --     term:toggle()
     else
         M.open(config, nil)
     end
@@ -205,6 +214,9 @@ end
 function M.setup(opts)
     config:setup(opts)
 
+    for _, term in ipairs(config.start_cmds) do
+        M.new({hide = term.hide}, term.cmd)
+    end
     vim.api.nvim_create_autocmd("TermClose", {
         callback = on_close,
     })
