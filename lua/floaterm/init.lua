@@ -17,6 +17,9 @@ function M.open(opts, cmd)
     term:open()
 end
 
+--find hidden terminal if key, else return the previous opened terminal
+---@param key string|nil
+---@return Terminal|nil
 function M.find(key)
     if key and type(key) == "string" then
         local term = state.hidden_terminals[key]
@@ -42,11 +45,11 @@ function M.new(opts, cmd)
     opts = vim.tbl_deep_extend("force", config, opts or {})
     local term = terminal:new(opts, cmd)
     -- if the terminal is hidden, the cmd should be the key to find it
-    if  opts.hide and cmd then
+    if opts.hide and cmd then
         term.id = cmd
         state.hidden_terminals[cmd] = term
     else
-        term.id = state.counter
+        term.id = config.IDGenerator()
         state.counter = state.counter + 1
         state.terminals[term.id] = term
         state.index = term.id
@@ -74,6 +77,26 @@ function M.next()
         end
     end
     state.terminals[state.index]:show()
+end
+
+function M.close(key)
+    local term = M.find(key)
+    if term then
+        if key then
+            state.hidden_terminals[key] = nil
+        else
+            state.index = nil
+            for k, _ in pairs(state.terminals) do
+                if k ~= term.id then
+                    state.index = k
+                    break
+                end
+            end
+            state.terminals[term.id] = nil
+            state.counter = state.counter - 1
+        end
+        term:close()
+    end
 end
 
 --- Switches to the previous terminal in the list
@@ -173,7 +196,7 @@ end
 --- Returns the total number of active terminals
 ---@return number
 function M.count()
-    return #state.terminals
+    return state.counter
 end
 
 --- Handles terminal close events
@@ -209,14 +232,82 @@ local function on_buf_enter()
 end
 
 --- Initializes the Floaterm plugin with the provided configuration
+--- and sets up user commands
+local function setup_user_commands()
+    vim.api.nvim_create_user_command("Floaterm", function(opts)
+        local args = opts.args or ""
+        local cmd_parts = vim.split(args, "%s+", { plain = true })
+        local subcmd = cmd_parts[1] or "toggle"
+        local arg1 = cmd_parts[2]
+        local arg2 = cmd_parts[3]
+
+        if subcmd == "new" then
+            M.new()
+        elseif subcmd == "toggle" then
+            M.toggle(arg1)
+        elseif subcmd == "kill" then
+            M.close(arg1)
+        elseif subcmd == "prev" then
+            M.prev()
+        elseif subcmd == "next" then
+            M.next()
+        else
+            M.toggle(arg1)
+        end
+    end, {
+        nargs = "*",
+        desc = "Floaterm terminal management",
+        complete = function(arg_lead, cmd_line, cursor_pos)
+            local args =
+                vim.split(cmd_line, " ", { plain = true, trimempty = true })
+            print(vim.inspect(args))
+            -- Remove the command name
+            table.remove(args, 1)
+            print(vim.inspect(args))
+
+            -- Get current argument position (accounting for partial input)
+            local arg_count = #args
+            print(arg_count)
+            if arg_lead == "" and cmd_line:sub(-1) == " " then
+                arg_count = arg_count + 1
+            end
+            print(arg_count)
+            if arg_count == 1 then
+                local options = { "new", "toggle", "kill", "prev", "next" }
+                return vim.tbl_filter(function(option)
+                    return vim.startswith(option, arg_lead)
+                end, options)
+            elseif arg_count == 2 then
+                local arg1 = args[1]
+                if arg1 == "toggle" or arg1 == "kill" then
+                    local options = vim.tbl_keys(state.hidden_terminals)
+                    return vim.tbl_filter(function(option)
+                        return vim.startswith(option, arg_lead)
+                    end, options)
+                elseif arg1 == "new" then
+                    local options = { "hidden", "nohidden" }
+                    return vim.tbl_filter(function(option)
+                        return vim.startswith(option, arg_lead)
+                    end, options)
+                else
+                    return {}
+                end
+            end
+
+            -- For other arguments, return empty (no completion)
+            return {}
+        end,
+    })
+end
 --- Sets up autocommands for terminal management and merges user options
 ---@param opts table|nil
 function M.setup(opts)
     config:setup(opts)
 
     for _, term in ipairs(config.start_cmds) do
-        M.new({hide = term.hide}, term.cmd)
+        M.new({ hide = term.hide }, term.cmd)
     end
+    setup_user_commands()
     vim.api.nvim_create_autocmd("TermClose", {
         callback = on_close,
     })
