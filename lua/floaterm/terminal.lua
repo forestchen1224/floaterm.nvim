@@ -1,10 +1,11 @@
 ---@class Terminal
----@field buf integer|nil 
+---@field buf integer|nil
 ---@field win integer|nil
----@field id integer|string|nil
+---@field id string |nil
 ---@field cmd string|nil
 ---@field jobid integer|nil
 ---@field opts table|nil
+---@field pick boolean if the terminal is showed in the picker
 local M = {}
 
 --- Creates a new terminal instance with the specified options and command
@@ -12,15 +13,34 @@ local M = {}
 ---@param opts table
 ---@param cmd string|nil
 ---@return Terminal
-function M:new(opts, cmd)
-    return setmetatable({
+function M:new(cmd, opts)
+    local term = {
         buf = nil,
         win = nil,
         id = nil,
         jobid = nil,
         opts = opts,
         cmd = cmd,
-    }, { __index = self })
+        pick = opts.pick or (opts.pick == nil and true),
+    }
+    term.buf = vim.api.nvim_create_buf(false, true) -- No file, scratch buffer
+
+    if vim.bo[term.buf].buftype ~= "terminal" then
+        vim.api.nvim_buf_call(term.buf, function()
+            term.jobid = vim.fn.jobstart(term.cmd or vim.o.shell, {
+                on_exit = function()
+                    if term.opts.autoclose then
+                        if vim.api.nvim_win_is_valid(term.win) then
+                            vim.api.nvim_win_close(term.win, false)
+                        end
+                        vim.api.nvim_buf_delete(term.buf, { force = true })
+                    end
+                end,
+                term = true,
+            })
+        end)
+    end
+    return setmetatable(term, { __index = self })
 end
 
 --- Opens the terminal in a floating window
@@ -58,21 +78,6 @@ function M:open()
     vim.api.nvim_win_set_width(self.win, width)
     vim.api.nvim_win_set_height(self.win, height)
 
-    if vim.bo[self.buf].buftype ~= "terminal" then
-        vim.api.nvim_buf_call(self.buf, function()
-            self.jobid = vim.fn.jobstart(self.cmd or vim.o.shell, {
-                on_exit = function()
-                    if self.opts.autoclose then
-                        if vim.api.nvim_win_is_valid(self.win) then
-                            vim.api.nvim_win_close(self.win, false)
-                        end
-                        vim.api.nvim_buf_delete(self.buf, { force = true })
-                    end
-                end,
-                term = true,
-            })
-        end)
-    end
     vim.cmd.startinsert()
 end
 
@@ -89,8 +94,9 @@ end
 
 --- Hides the terminal window if it's currently visible
 --- Does not destroy the buffer, allowing the terminal to be shown again
+---@param self Terminal
 function M:hide()
-    if vim.api.nvim_win_is_valid(self.win) then
+    if self.win and vim.api.nvim_win_is_valid(self.win) then
         vim.api.nvim_win_hide(self.win)
     end
 end

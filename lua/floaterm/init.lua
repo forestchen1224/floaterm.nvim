@@ -11,29 +11,21 @@ local state = require("floaterm.state")
 --- If a terminal is already open, it will be hidden before opening the new one
 ---@param opts table|nil
 ---@param cmd string|nil Command to run in the terminal (defaults to shell)
-function M.open(opts, cmd)
+function M.open(cmd, opts)
     hide_open()
-    local term = M.new(opts, cmd)
+    local term = M.new(cmd, opts)
     term:open()
 end
 
 --find hidden terminal if key, else return the previous opened terminal
----@param key string|nil
+---@param id string|nil
 ---@return Terminal|nil
-function M.find(key)
-    if key and type(key) == "string" then
-        local term = state.hidden_terminals[key]
-        if term then
-            return term
-        else
-            return nil
-        end
+function M.find(id)
+    id = id or state.id
+    if id then
+        return state.terminals[id]
     else
-        if state.index and state.terminals[state.index] then
-            return state.terminals[state.index]
-        else
-            return nil
-        end
+        return nil
     end
 end
 --- Creates a new terminal instance with the specified options and command
@@ -41,105 +33,51 @@ end
 ---@param opts table|nil
 ---@param cmd string|nil
 ---@return table
-function M.new(opts, cmd)
+function M.new(cmd, opts)
     opts = vim.tbl_deep_extend("force", config, opts or {})
-    local term = terminal:new(opts, cmd)
+    local term = terminal:new(cmd, opts)
     -- if the terminal is hidden, the cmd should be the key to find it
-    if opts.hide and cmd then
+    if opts.id then
+        term.id = opts.id
         term.id = cmd
-        state.hidden_terminals[cmd] = term
+        state.terminals[term.id] = term
     else
         term.id = config.IDGenerator()
-        state.counter = state.counter + 1
         state.terminals[term.id] = term
-        state.index = term.id
+        state.id = term.id
     end
     return term
 end
 
---- Switches to the next terminal in the list
---- If already at the last terminal, wraps around to the current terminal
---- Hides any currently open terminal before showing the next one
-function M.next()
-    if not state.index then
-        return
-    end
-    hide_open()
-    local next = false
-    for k, v in pairs(state.terminals) do
-        if next then
-            state.index = k
-            v:show()
-            return
-        end
-        if k == state.index then
-            next = true
-        end
-    end
-    state.terminals[state.index]:show()
-end
-
-function M.close(key)
-    local term = M.find(key)
+function M.close(id)
+    local term = M.find(id)
     if term then
-        if key then
-            state.hidden_terminals[key] = nil
+        if id then
+            state.terminals[id] = nil
         else
-            state.index = nil
+            state.id = nil
             for k, _ in pairs(state.terminals) do
                 if k ~= term.id then
-                    state.index = k
+                    state.id = k
                     break
                 end
             end
             state.terminals[term.id] = nil
-            state.counter = state.counter - 1
         end
         term:close()
     end
 end
 
---- Switches to the previous terminal in the list
---- If already at the first terminal, shows the current terminal
---- Hides any currently open terminal before showing the previous one
-function M.prev()
-    if not state.index then
-        return
-    end
-    hide_open()
-    local index = -1
-    for k, v in pairs(state.terminals) do
-        if k == state.index then
-            if index >= 0 then
-                state.index = index
-                state.terminals[index]:show()
-                return
-            else
-                v:show()
-                return
-            end
-        end
-        index = k
-    end
-end
-
 --- Toggles the visibility of the current terminal
 --- If no terminal exists, opens a new one with default options
-function M.toggle(key)
+---@id string|nil
+function M.toggle(id)
     -- print(vim.inspect(state))
-    local term = M.find(key)
-    if term ~= nil then
+    local term = M.find(id)
+    if term then
         term:toggle()
-        return
-    -- end
-    -- if not state.index then
-    --     return
-    -- end
-    -- term = state.terminals[state.index]
-    -- if term ~= nil then
-    --     term:toggle()
     else
-        M.open(config, nil)
+        M.open()
     end
 end
 
@@ -148,10 +86,10 @@ end
 --- Automatically reopens the terminal to apply the new size
 ---@param delta number
 function M.resize(delta)
-    if not state.index then
+    if not state.id then
         return
     end
-    local term = state.terminals[state.index]
+    local term = state.terminals[state.id]
     term.config.width = term.config.width + delta
     if term.config.width > 0.99 then
         term.config.width = 0.99
@@ -196,21 +134,25 @@ end
 --- Returns the total number of active terminals
 ---@return number
 function M.count()
-    return state.counter
+    local count = vim.tbl_count(vim.tbl_filter(function(term)
+        return term.pick
+    end, state.terminals))
+    -- print("count: ".. count)
+    return count
 end
 
 --- Handles terminal close events
 --- Removes the closed terminal from state and updates the current index
 ---@param ev table
 local function on_close(ev)
-    local term = state.terminals[state.index]
+    local term = state.terminals[state.id]
     if not term or term.buf ~= ev.buf then
         return
     end
-    state.index = nil
+    state.id = nil
     for k, _ in pairs(state.terminals) do
         if k ~= term.id then
-            state.index = k
+            state.id = k
             break
         end
     end
@@ -222,7 +164,7 @@ end
 local function on_buf_enter()
     local buf = vim.api.nvim_get_current_buf()
     if vim.bo[buf].buftype == "terminal" then
-        local term = state.terminals[state.index]
+        local term = state.terminals[state.id]
         if term ~= nil then
             vim.fn.timer_start(50, function()
                 vim.cmd.startinsert()
@@ -236,21 +178,21 @@ end
 local function setup_user_commands()
     vim.api.nvim_create_user_command("Floaterm", function(opts)
         local args = opts.args or ""
-        local cmd_parts = vim.split(args, "%s+", { plain = true })
+        local cmd_parts = vim.split(args, " ", { plain = true })
         local subcmd = cmd_parts[1] or "toggle"
         local arg1 = cmd_parts[2]
         local arg2 = cmd_parts[3]
 
         if subcmd == "new" then
-            M.new()
+            if arg1 and arg1 == "hidden" and arg2 then
+                M.new(args, { pick = true })
+            else
+                M.new()
+            end
         elseif subcmd == "toggle" then
             M.toggle(arg1)
         elseif subcmd == "kill" then
             M.close(arg1)
-        elseif subcmd == "prev" then
-            M.prev()
-        elseif subcmd == "next" then
-            M.next()
         else
             M.toggle(arg1)
         end
@@ -273,14 +215,14 @@ local function setup_user_commands()
             end
             print(arg_count)
             if arg_count == 1 then
-                local options = { "new", "toggle", "kill", "prev", "next" }
+                local options = { "new", "toggle", "kill" }
                 return vim.tbl_filter(function(option)
                     return vim.startswith(option, arg_lead)
                 end, options)
             elseif arg_count == 2 then
                 local arg1 = args[1]
                 if arg1 == "toggle" or arg1 == "kill" then
-                    local options = vim.tbl_keys(state.hidden_terminals)
+                    local options = vim.tbl_keys(state.terminals)
                     return vim.tbl_filter(function(option)
                         return vim.startswith(option, arg_lead)
                     end, options)
@@ -305,7 +247,9 @@ function M.setup(opts)
     config:setup(opts)
 
     for _, term in ipairs(config.start_cmds) do
-        M.new({ hide = term.hide }, term.cmd)
+        M.new(term.cmd, { pick = term.pick, id = term.id })
+        -- M.new({ pick = true }, term.cmd)
+        -- hide_open()
     end
     setup_user_commands()
     vim.api.nvim_create_autocmd("TermClose", {
