@@ -7,7 +7,7 @@ function M:init()
         local id = 0
         self.Generator =  function()
             id = id + 1
-            return id
+            return tostring(id)
         end
     end
     return self.Generator

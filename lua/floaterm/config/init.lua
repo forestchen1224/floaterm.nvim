@@ -10,7 +10,7 @@
 ---@field border Border
 ---@field autoclose boolean
 ---@field picker Picker
----@field start_cmds {hide: boolean, cmd: string}[]
+---@field start_cmds {pick: boolean, cmd: string}[]
 local M = {
     width = 0.9, -- Terminal width as a fraction of screen width (0.1-0.99)
     height = 0.9, -- Terminal height as a fraction of screen height (0.1-0.99)
@@ -20,7 +20,7 @@ local M = {
     picker = "fzf-lua", -- Terminal picker to use: "fzf-lua" or "builtin"
     start_cmds = {
         -- {
-        --     -- hide = false,
+        --     -- pick = false,
         --     -- cmd = "lazyit"
         -- },
     },
