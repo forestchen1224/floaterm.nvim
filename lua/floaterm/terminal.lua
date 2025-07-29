@@ -1,11 +1,23 @@
+---@class Terminal
+---@field buf integer|nil 
+---@field win integer|nil
+---@field id integer|string|nil
+---@field cmd string|nil
+---@field jobid integer|nil
+---@field opts table|nil
 local M = {}
+
 --- Creates a new terminal instance with the specified options and command
 --- Returns a terminal object with methods for opening, toggling, hiding, and showing
+---@param opts table
+---@param cmd string|nil
+---@return Terminal
 function M:new(opts, cmd)
     return setmetatable({
         buf = nil,
         win = nil,
         id = nil,
+        jobid = nil,
         opts = opts,
         cmd = cmd,
     }, { __index = self })
@@ -14,6 +26,7 @@ end
 --- Opens the terminal in a floating window
 --- Creates a new buffer if needed and starts the terminal job
 --- Centers the window on screen based on configured width/height ratios
+---@param self Terminal
 function M:open()
     local width = math.floor(vim.o.columns * self.opts.width)
     local height = math.floor(vim.o.lines * self.opts.height)
@@ -47,7 +60,7 @@ function M:open()
 
     if vim.bo[self.buf].buftype ~= "terminal" then
         vim.api.nvim_buf_call(self.buf, function()
-            vim.fn.jobstart(self.cmd or vim.o.shell, {
+            self.jobid = vim.fn.jobstart(self.cmd or vim.o.shell, {
                 on_exit = function()
                     if self.opts.autoclose then
                         if vim.api.nvim_win_is_valid(self.win) then
@@ -65,6 +78,7 @@ end
 
 --- Toggles the terminal window visibility
 --- If window is open, hides it; if closed, opens it
+---@param self Terminal
 function M:toggle()
     if self.win and vim.api.nvim_win_is_valid(self.win) then
         vim.api.nvim_win_hide(self.win)
@@ -83,9 +97,17 @@ end
 
 --- Shows the terminal window
 --- If the window is not valid, opens a new one
+---@param self Terminal
 function M:show()
     if not vim.api.nvim_win_is_valid(self.win) then
         self:open()
+    end
+end
+
+---@param self Terminal
+function M:close()
+    if self.jobid then
+        vim.fn.jobstop(self.jobid)
     end
 end
 return M
