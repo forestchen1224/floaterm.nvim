@@ -1,18 +1,33 @@
+local config = require("floaterm.config")
 local picker = require("floaterm.picker")
 local terminal = require("floaterm.terminal")
-local hide_open = require("floaterm.utils").hide_open
 
 local M = {}
+--- Tracks all active terminals and the currently selected terminal
+---@class State
+---@field id string|nil ID of the currently active terminal
+---@field terminals table<string, any> Table of all active terminals indexed by ID
+local state = {
+    id = nil,
+    terminals = {},
+}
 
-local config = require("floaterm.config")
-local state = require("floaterm.state")
+function M.hide_open()
+    if not state.id then
+        return
+    end
+    local term = state.terminals[state.id]
+    if term ~= nil then
+        term:hide()
+    end
+end
 
 --- Opens a new floating terminal with the specified options and command
 --- If a terminal is already open, it will be hidden before opening the new one
 ---@param opts table|nil
 ---@param cmd string|nil Command to run in the terminal (defaults to shell)
 function M.open(cmd, opts)
-    hide_open()
+    M.hide_open()
     local term = M.new(cmd, opts)
     term:open()
 end
@@ -22,42 +37,34 @@ end
 ---@return Terminal|nil
 function M.find(id)
     id = id or state.id
-    if id then
-        return state.terminals[id]
-    else
-        return nil
-    end
+    return state.terminals[id]
 end
 --- Creates a new terminal instance with the specified options and command
 --- The terminal is registered in the state unless the 'hide' option is set
----@param opts table|nil
+---@param opts TerminalOpts|nil
 ---@param cmd string|nil
 ---@return table
 function M.new(cmd, opts)
-    opts = vim.tbl_deep_extend("force", config, opts or {})
+    opts = vim.tbl_deep_extend("force", opts or {}, config)
     local term = terminal:new(cmd, opts)
     -- if the terminal is hidden, the cmd should be the key to find it
-    if opts.id then
-        term.id = opts.id
-        term.id = cmd
-        state.terminals[term.id] = term
-    else
-        term.id = config.IDGenerator()
-        state.terminals[term.id] = term
+    term.id = opts.id or config.IDGenerator()
+    if term.pick then
         state.id = term.id
     end
+    state.terminals[term.id] = term
     return term
 end
 
 function M.close(id)
     local term = M.find(id)
     if term then
-        if id then
-            state.terminals[id] = nil
+        if not term.pick then
+            state.terminals[term.id] = nil
         else
             state.id = nil
             for k, _ in pairs(state.terminals) do
-                if k ~= term.id then
+                if k ~= term.id and term.pick then
                     state.id = k
                     break
                 end
@@ -70,9 +77,8 @@ end
 
 --- Toggles the visibility of the current terminal
 --- If no terminal exists, opens a new one with default options
----@id string|nil
+---@param id string|nil
 function M.toggle(id)
-    -- print(vim.inspect(state))
     local term = M.find(id)
     if term then
         term:toggle()
@@ -102,7 +108,7 @@ function M.resize(delta)
     elseif term.config.height < 0.10 then
         term.config.height = 0.10
     end
-    hide_open()
+    M.hide_open()
     term:toggle()
 end
 
@@ -116,6 +122,7 @@ function M.pick()
     }
     M.picker = picker_options[config.picker]
     if M.picker then
+        M.hide_open()
         M.picker(state)
     else
         vim.schedule(function()
@@ -137,7 +144,6 @@ function M.count()
     local count = vim.tbl_count(vim.tbl_filter(function(term)
         return term.pick
     end, state.terminals))
-    -- print("count: ".. count)
     return count
 end
 
@@ -151,26 +157,12 @@ local function on_close(ev)
     end
     state.id = nil
     for k, _ in pairs(state.terminals) do
-        if k ~= term.id then
+        if k ~= term.id and term.pick then
             state.id = k
             break
         end
     end
     state.terminals[term.id] = nil
-end
-
---- Handles buffer enter events for terminal buffers
---- Automatically enters insert mode when entering a terminal buffer
-local function on_buf_enter()
-    local buf = vim.api.nvim_get_current_buf()
-    if vim.bo[buf].buftype == "terminal" then
-        local term = state.terminals[state.id]
-        if term ~= nil then
-            vim.fn.timer_start(50, function()
-                vim.cmd.startinsert()
-            end)
-        end
-    end
 end
 
 --- Initializes the Floaterm plugin with the provided configuration
@@ -199,7 +191,7 @@ local function setup_user_commands()
     end, {
         nargs = "*",
         desc = "Floaterm terminal management",
-        complete = function(arg_lead, cmd_line, cursor_pos)
+        complete = function(arg_lead, cmd_line, _)
             local args =
                 vim.split(cmd_line, " ", { plain = true, trimempty = true })
             print(vim.inspect(args))
@@ -242,7 +234,7 @@ local function setup_user_commands()
     })
 end
 --- Sets up autocommands for terminal management and merges user options
----@param opts table|nil
+---@param opts FloatermConfig|nil
 function M.setup(opts)
     config:setup(opts)
 
@@ -254,10 +246,6 @@ function M.setup(opts)
     setup_user_commands()
     vim.api.nvim_create_autocmd("TermClose", {
         callback = on_close,
-    })
-    vim.api.nvim_create_autocmd("BufEnter", {
-        pattern = "*",
-        callback = on_buf_enter,
     })
 end
 

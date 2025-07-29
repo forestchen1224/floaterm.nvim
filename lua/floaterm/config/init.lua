@@ -10,7 +10,7 @@
 ---@field border Border
 ---@field autoclose boolean
 ---@field picker Picker
----@field start_cmds {pick: boolean, cmd: string}[]
+---@field start_cmds {cmd: string, pick: boolean, id: string|nil }[]
 local M = {
     width = 0.9, -- Terminal width as a fraction of screen width (0.1-0.99)
     height = 0.9, -- Terminal height as a fraction of screen height (0.1-0.99)
@@ -26,6 +26,7 @@ local M = {
     },
 }
 
+---@param opts FloatermConfig|nil
 function M:setup(opts)
     local new_config = vim.tbl_deep_extend("force", M, opts)
     for k, v in pairs(new_config) do

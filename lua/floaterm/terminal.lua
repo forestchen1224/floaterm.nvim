@@ -8,16 +8,22 @@
 ---@field pick boolean if the terminal is showed in the picker
 local M = {}
 
+---@class TerminalOpts
+---@field id string|nil
+---@field pick boolean|nil
+---@field autoclose boolean|nil
+-----@field
+
 --- Creates a new terminal instance with the specified options and command
 --- Returns a terminal object with methods for opening, toggling, hiding, and showing
----@param opts table
+---@param opts TerminalOpts
 ---@param cmd string|nil
 ---@return Terminal
 function M:new(cmd, opts)
     local term = {
         buf = nil,
         win = nil,
-        id = nil,
+        id = opts.id,
         jobid = nil,
         opts = opts,
         cmd = cmd,
@@ -48,6 +54,14 @@ end
 --- Centers the window on screen based on configured width/height ratios
 ---@param self Terminal
 function M:open()
+    if not self.buf or not vim.api.nvim_buf_is_valid(self.buf) then
+        vim.notify(
+            "buffer: " .. self.buf .. " is not valid",
+            vim.log.levels.ERROR
+        )
+        return
+    end
+
     local width = math.floor(vim.o.columns * self.opts.width)
     local height = math.floor(vim.o.lines * self.opts.height)
 
@@ -55,10 +69,6 @@ function M:open()
     local col = math.floor((vim.o.columns - width) / 2)
     local row = math.floor((vim.o.lines - height) / 2)
 
-    -- Create a buffer
-    if not self.buf or not vim.api.nvim_buf_is_valid(self.buf) then
-        self.buf = vim.api.nvim_create_buf(false, true) -- No file, scratch buffer
-    end
 
     -- Define window configuration
     local win_config = {

@@ -1,5 +1,4 @@
 local M = {}
-local hide_open = require("floaterm.utils").hide_open
 local builtin = require("fzf-lua.previewer.builtin")
 
 --- Custom previewer class for terminal buffers in fzf-lua
@@ -60,7 +59,6 @@ end
 
  function M.fzflua_picker(state)
     local fzf_lua = require("fzf-lua")
-    hide_open()
 
     local display = {}
     local terminals = vim.tbl_filter(function (terminal)
@@ -103,7 +101,6 @@ end
         end,
     }, function(item, _)
         if item ~= nil then
-            hide_open()
             state.index = item.id
             state.terminals[item.id]:open()
         end
