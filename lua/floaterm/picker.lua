@@ -63,11 +63,14 @@ end
     hide_open()
 
     local display = {}
+    local terminals = vim.tbl_filter(function (terminal)
+         return terminal.pick
+    end, state.terminals)
 
-    for _, v in pairs(state.terminals) do
+    for _, v in pairs(terminals) do
         local bufnr = v.buf
         local name = vim.fn.getbufvar(bufnr, "term_title")
-        local title = string.format("%d:%d %s", v.id, bufnr, name)
+        local title = string.format("%s:%d %s", v.id, bufnr, name)
         table.insert(display, title)
     end
 
@@ -78,7 +81,7 @@ end
             ["default"] = function(selected)
                 if selected and #selected > 0 then
                     -- Extract ID from the selected entry
-                    local id = tonumber(string.match(selected[1], "(%d+):"))
+                    local id = string.match(selected[1], "(%w+):")
                     if id then
                         state.index = id
                         local terminal = state.terminals[id]
