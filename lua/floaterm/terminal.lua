@@ -4,36 +4,28 @@
 ---@field id string |nil
 ---@field cmd string|nil
 ---@field jobid integer|nil
----@field opts table|nil
----@field pick boolean if the terminal is showed in the picker
+---@field opts Opts|nil
 local M = {}
-
----@class TerminalOpts
----@field id string|nil
----@field pick boolean|nil
----@field autoclose boolean|nil
------@field
 
 --- Creates a new terminal instance with the specified options and command
 --- Returns a terminal object with methods for opening, toggling, hiding, and showing
----@param opts TerminalOpts
----@param cmd string|nil
+---@param opts Opts
+---@param id string|nil
 ---@return Terminal
-function M:new(cmd, opts)
+function M:new(id, opts)
+    opts.pick = opts.pick == nil or opts.pick
     local term = {
         buf = nil,
         win = nil,
-        id = opts.id,
+        id = id,
         jobid = nil,
         opts = opts,
-        cmd = cmd,
-        pick = opts.pick or (opts.pick == nil and true),
     }
     term.buf = vim.api.nvim_create_buf(false, true) -- No file, scratch buffer
 
     if vim.bo[term.buf].buftype ~= "terminal" then
         vim.api.nvim_buf_call(term.buf, function()
-            term.jobid = vim.fn.jobstart(term.cmd or vim.o.shell, {
+            term.jobid = vim.fn.jobstart(term.opts.cmd or vim.o.shell, {
                 on_exit = function()
                     if term.opts.autoclose then
                         if vim.api.nvim_win_is_valid(term.win) then

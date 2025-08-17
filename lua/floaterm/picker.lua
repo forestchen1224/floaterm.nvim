@@ -57,12 +57,13 @@ function M.create_term_items(state)
     return items
 end
 
+---@param state State
  function M.fzflua_picker(state)
     local fzf_lua = require("fzf-lua")
 
     local display = {}
     local terminals = vim.tbl_filter(function (terminal)
-         return terminal.pick
+         return terminal.opts.pick
     end, state.terminals)
 
     for _, v in pairs(terminals) do
@@ -74,14 +75,15 @@ end
 
     fzf_lua.fzf_exec(display, {
         prompt = "Select Terminal❯ ",
-        previewer = MyPreviewer,
+        -- previewer = MyPreviewer,
         actions = {
             ["default"] = function(selected)
+                -- print(vim.inspect(selected))
                 if selected and #selected > 0 then
                     -- Extract ID from the selected entry
                     local id = string.match(selected[1], "(%w+):")
                     if id then
-                        state.index = id
+                        state.id = id
                         local terminal = state.terminals[id]
                         terminal:open()
                     end

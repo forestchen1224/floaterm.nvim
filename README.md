@@ -5,17 +5,18 @@ A lightweight Neovim plugin for managing floating terminals with ease.
 ## ✨ Features
 
 - 🪟 **Floating terminals** - Beautiful floating windows for terminal sessions
-- 🔄 **Multiple terminals** - Create and manage multiple terminal instances
-- 🎯 **Terminal picker** - Quick selection with fzf-lua or builtin picker
+- 🔄 **Multiple terminals** - Create and manage multiple terminal instances with unique IDs
+- 🎯 **Terminal picker** - Quick selection with fzf-lua, snack, or builtin picker
 - 📐 **Resizable windows** - Dynamic resizing with configurable ratios
-- ⌨️ **Navigation** - Easy switching between terminals with next/prev
 - 🎨 **Customizable** - Configurable borders, dimensions, and behavior
 - 🔧 **Command execution** - Run any command in floating terminals
+- 🏷️ **Named terminals** - Create terminals with custom IDs for easy reference
+- 🚀 **Auto-start terminals** - Configure terminals to start automatically on plugin load
 
 ## 📋 Requirements
 
-- Neovim 0.5+
-- Optional: [fzf-lua](https://github.com/ibhagwan/fzf-lua) for enhanced picker with preview
+- Neovim 0.11.0+
+- Optional: [fzf-lua](https://github.com/ibhagwan/fzf-lua) or [snack.nvim](https://github.com/folke/snack.nvim) for enhanced picker with preview
 
 ## 📦 Installation
 
@@ -26,13 +27,16 @@ A lightweight Neovim plugin for managing floating terminals with ease.
   'forestchen1224/floaterm.nvim',
   dependencies = {
     'ibhagwan/fzf-lua', -- Optional: for enhanced picker with preview
+    -- or 'folke/snack.nvim', -- Alternative picker option
   },
   config = function()
     require('floaterm').setup({
       -- Optional: override default configuration
-      width = 0.9,
-      height = 0.9,
-      border = 'rounded',
+      opts = {
+        width = 0.9,
+        height = 0.9,
+        border = 'rounded',
+      }
     })
   end
 }
@@ -50,20 +54,39 @@ use {
 }
 ```
 
+
 ## ⚙️ Configuration
 
 ### Default Options
 
 ```lua
 require('floaterm').setup({
-  width = 0.9,        -- Terminal width as fraction of screen width (0.1-0.99)
-  height = 0.9,       -- Terminal height as fraction of screen height (0.1-0.99)
-  style = "minimal",  -- Window style: "minimal" for clean UI
-  border = "rounded", -- Border style: "none", "single", "double", "rounded", "solid", "shadow"
-  autoclose = false,  -- Whether to automatically close terminal when job exits
-  picker = "fzf-lua", -- Terminal picker: "fzf-lua" or "builtin"
+  picker = "fzf-lua",  -- Terminal picker: "fzf-lua", "snack", or "builtin"
+  opts = {
+    width = 0.9,        -- Terminal width as fraction of screen width (0.1-0.99)
+    height = 0.9,       -- Terminal height as fraction of screen height (0.1-0.99)
+    style = "minimal",  -- Window style: "minimal" for clean UI
+    border = "rounded", -- Border style: "none", "single", "double", "rounded", "solid", "shadow"
+    autoclose = false,  -- Whether to automatically close terminal when job exits
+    cmd = nil,          -- Default command to run (defaults to vim.o.shell)
+    pick = true,        -- Whether terminal appears in picker by default
+  },
+  start_cmds = {        -- Terminals to create automatically on startup
+    -- Example:
+    -- {
+    --   id = "lazygit",
+    --   opts = {
+    --     pick = false,
+    --     cmd = "lazygit",
+    --   },
+    -- },
+  },
 })
 ```
+
+Note: if a terminal is not pickable, it is not picked by the picker, nor picked 
+by the default `open()` or `toggle()`, you can only access it via the ID by
+`open(ID)` or `toggle(ID)`.
 
 ### Example Keymaps
 
@@ -71,16 +94,12 @@ require('floaterm').setup({
 local floaterm = require('floaterm')
 
 -- Basic terminal operations
-vim.keymap.set({ 'n', 't' }, '<leader>tf', function() floaterm.open() end, 
-  { silent = true, desc = 'Open floating terminal' })
+vim.keymap.set({ 'n', 't' }, '<leader>tf', function() floaterm.new() end, 
+  { silent = true, desc = 'Open new floating terminal' })
 vim.keymap.set({ 'n', 't' }, '<leader>tt', function() floaterm.toggle() end, 
   { silent = true, desc = 'Toggle floating terminal' })
 
 -- Terminal navigation
-vim.keymap.set({ 'n', 't' }, '<leader>tn', function() floaterm.next() end, 
-  { silent = true, desc = 'Next terminal' })
-vim.keymap.set({ 'n', 't' }, '<leader>tp', function() floaterm.prev() end, 
-  { silent = true, desc = 'Previous terminal' })
 vim.keymap.set({ 'n', 't' }, '<leader>tl', function() floaterm.pick() end, 
   { silent = true, desc = 'Pick terminal' })
 
@@ -90,59 +109,68 @@ vim.keymap.set({ 'n', 't' }, '<leader>t=', function() floaterm.resize(0.05) end,
 vim.keymap.set({ 'n', 't' }, '<leader>t-', function() floaterm.resize(-0.05) end, 
   { silent = true, desc = 'Decrease terminal size' })
 
--- Example: Open terminal with specific command
-vim.keymap.set('n', '<leader>tg', function()
-  floaterm.open({}, 'lazygit')
-end, { silent = true, desc = 'Open lazygit' })
-
--- Example: File manager in current directory
-vim.keymap.set('n', '<leader>tv', function()
-  local cmd = "ranger"
-  local file = vim.fn.expand("%:p")
-  if file and file ~= "" then
-    cmd = cmd .. " --selectfile=" .. vim.fn.shellescape(file)
-  end
-  floaterm.open({}, cmd)
-end, { silent = true, desc = "Open ranger at current file" })
+-- Open specific terminal by ID
+vim.keymap.set('n', '<leader>to', function()
+  floaterm.toggle('lazygit') -- Opens the terminal with ID 'lazygit'
+end, { silent = true, desc = 'Open specific terminal' })
 ```
 
 ## 🚀 Usage
 
 ### Core Functions
 
-#### `open(opts, cmd)`
-Creates and opens a new floating terminal.
+#### `new(id, opts)`
+Creates and opens a new floating terminal with optional custom ID.
 
+- `id` (string, optional): Custom ID for the terminal (auto-generated if not provided)
 - `opts` (table, optional): Configuration overrides for this terminal
-- `cmd` (string, optional): Command to run (defaults to `vim.o.shell`)
 
 ```lua
--- Open terminal with default shell
-require('floaterm').open()
+-- Open terminal with auto-generated ID
+require('floaterm').new()
 
--- Open terminal with custom command
-require('floaterm').open({}, 'htop')
+-- Open terminal with custom ID and command
+require('floaterm').new('python-repl', { cmd = 'python' })
 
 -- Open terminal with custom options
-require('floaterm').open({ width = 0.5, height = 0.5 }, 'python')
+require('floaterm').new('small-term', { width = 0.5, height = 0.5 })
 ```
 
-#### `new(opts, cmd)`
-Creates a new terminal instance without opening it.
+#### `open(id)`
+Opens an existing terminal by ID, or the last active terminal if no ID specified.
 
 ```lua
-local term = require('floaterm').new({ width = 0.8 }, 'nvim')
-term:open() -- Open when ready
+-- Open the current/last active terminal
+require('floaterm').open()
+
+-- Open specific terminal by ID
+require('floaterm').open('lazygit')
 ```
 
-#### `toggle()`
-Toggles the visibility of the current terminal.
+#### `toggle(id)`
+Toggles the visibility of a terminal. Creates a new one if none exists.
 
-#### `next()` / `prev()`
-Navigate between multiple terminal instances.
+```lua
+-- Toggle current terminal
+require('floaterm').toggle()
+
+-- Toggle specific terminal
+require('floaterm').toggle('python-repl')
+```
+
+#### `close(id)`
+Closes a terminal and removes it from the terminal list.
+
+```lua
+-- Close current terminal
+require('floaterm').close()
+
+-- Close specific terminal
+require('floaterm').close('temp-terminal')
+```
 
 #### `pick()`
-Opens a picker to select from available terminals. Uses fzf-lua with preview if available, otherwise falls back to `vim.ui.select`.
+Opens a picker to select from available terminals. Uses the configured picker (fzf-lua, snack, or builtin).
 
 #### `resize(delta)`
 Resize the current terminal by the specified delta (positive or negative float).
@@ -152,10 +180,33 @@ require('floaterm').resize(0.1)  -- Increase size by 10%
 require('floaterm').resize(-0.1) -- Decrease size by 10%
 ```
 
-#### `count()`
-Returns the number of active terminals.
-
 ### Advanced Usage
+
+#### Auto-start Terminals
+Configure terminals to start automatically when the plugin loads:
+
+```lua
+require('floaterm').setup({
+  start_cmds = {
+    {
+      id = "main",
+      opts = {
+        cmd = vim.o.shell,
+        pick = true,
+      },
+    },
+    {
+      id = "git",
+      opts = {
+        cmd = "lazygit",
+        pick = false,  -- Don't show in picker
+        width = 0.8,
+        height = 0.8,
+      },
+    },
+  },
+})
+```
 
 #### Creating Specialized Terminals
 
@@ -163,23 +214,35 @@ Returns the number of active terminals.
 local floaterm = require('floaterm')
 
 -- Create a hidden terminal for background tasks
-local background_term = floaterm.new({ hide = true }, 'watch -n1 "df -h"')
+floaterm.new('background', { pick = false, cmd = 'watch -n1 "df -h"' })
 
 -- Create a compact terminal for quick commands
-local mini_term = floaterm.new({ width = 0.4, height = 0.3 })
+floaterm.new('mini', { width = 0.4, height = 0.3 })
+
+-- File manager that starts at current file location
+local function open_ranger()
+  local file = vim.fn.expand("%:p")
+  local cmd = "ranger"
+  if file and file ~= "" then
+    cmd = cmd .. " --selectfile=" .. vim.fn.shellescape(file)
+  end
+  floaterm.new('ranger', { cmd = cmd })
+end
+
+vim.keymap.set('n', '<leader>tr', open_ranger, { desc = 'Open ranger at current file' })
 ```
 
 #### Custom Border Styles
 
 ```lua
 -- Using array for custom border characters
-floaterm.open({
+floaterm.new('custom-border', {
   border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" }
 })
 
 -- Using predefined styles
-floaterm.open({ border = "double" })
-floaterm.open({ border = "shadow" })
+floaterm.new('double-border', { border = "double" })
+floaterm.new('shadow-border', { border = "shadow" })
 ```
 
 ## 🎨 Picker Options
@@ -187,37 +250,31 @@ floaterm.open({ border = "shadow" })
 ### fzf-lua Picker (Recommended)
 When [fzf-lua](https://github.com/ibhagwan/fzf-lua) is available, the picker provides:
 - Live preview of terminal content
-- Fuzzy searching
+- Fuzzy searching by terminal ID and title
 - Better visual presentation
-- Customizable actions
+- Keyboard shortcuts (Ctrl-N for next)
+
+### Snack Picker
+When [snack.nvim](https://github.com/folke/snack.nvim) is available:
+- Integration with Snack's picker system
+- Consistent UI with other Snack components
 
 ### Builtin Picker
-Falls back to `vim.ui.select` when fzf-lua is not available:
+Falls back to `vim.ui.select` when enhanced pickers are not available:
 - Simple list selection
 - Works with any `vim.ui.select` implementation
 - No additional dependencies
 
 ## 🔧 API Reference
 
-### Configuration Schema
-
-```lua
-{
-  width = number,     -- 0.1 to 0.99 (fraction of screen width)
-  height = number,    -- 0.1 to 0.99 (fraction of screen height)
-  style = string,     -- Window style for nvim_open_win
-  border = string|table, -- Border style or custom border array
-  autoclose = boolean,   -- Auto-close terminal on job exit
-  picker = string,       -- "fzf-lua" or "builtin"
-}
-```
-
 ### Terminal Object Methods
 
+When you get a terminal object via `find()`, it has these methods:
 - `term:open()` - Open the terminal window
 - `term:toggle()` - Toggle terminal visibility
 - `term:hide()` - Hide the terminal window
 - `term:show()` - Show the terminal window
+- `term:close()` - Close and stop the terminal
 
 ## 🤝 Contributing
 
@@ -226,4 +283,3 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 ## 📄 License
 
 MIT License - see [LICENSE](LICENSE) file for details.
-
